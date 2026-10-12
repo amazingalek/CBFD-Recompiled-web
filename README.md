@@ -3,7 +3,7 @@
 # Conker's Bad Fur Day: Recompiled
 
 > [!WARNING]
-> **This is amazingalek/CBFD-Recompiled-web, a fork, not Conker's Bad Fur Day: Recompiled.** Its `web` branch builds
+> **This is amazingalek/CBFD-Recompiled-web, a fork, not Conker's Bad Fur Day: Recompiled.** Its `main` branch builds
 > the game into a web page (WebGPU, through [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)),
 > and everything on that branch past upstream's commits was written by AI (Claude) for this fork. It is not made,
 > endorsed or supported by the Conker's Bad Fur Day: Recompiled authors: please don't take issues with this fork to
@@ -183,7 +183,7 @@ changed.
 
 ## The web page
 
-This fork's `web` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
+This fork's `main` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
 draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are the web
 forks at the commits [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)'s `forks.txt` names (with
 this game's patches in `recomp/` on top, as before), and `tools/N64Recomp-browser` makes the game a page. Mods are
@@ -199,7 +199,8 @@ emcmake cmake -S host -B host/build-web -G Ninja -DCMAKE_BUILD_TYPE=Release -DRT
 cmake --build host/build-web
 ```
 
-`host/build-web` then holds `ConkerRecomp.html`, `.js`, `.wasm`, `.data` and `coi_serviceworker.js`. The page needs a
+With [ccache](https://ccache.dev) on `PATH`, a second build directory inside the checkout compiles almost nothing
+again. `host/build-web` then holds `ConkerRecomp.html`, `.js`, `.wasm`, `.data` and `coi_serviceworker.js`. The page needs a
 browser with WebGPU (Chrome or Edge 113 and up) and must be cross-origin isolated: serve the folder with
 `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`, or on a host that can't set
 headers, as is, and `coi_serviceworker.js` sets them after one reload. The player picks their ROM in the launcher; it,
@@ -209,6 +210,15 @@ The game's code runs at TLB-mapped addresses, and some of it reads tables in its
 to RDRAM + 0x95000000 and + 0x96000000 (`host/src/overlays.cpp`). Natively that is inside the runtime's 4 GB
 reservation; on a page RDRAM is an allocation in the wasm heap, so the host moves the heap's break past those addresses
 and the page's memory grows to about 2.5 GB of address space, most of it never touched.
+
+The code leaves a function by jumping to another one, which the recompiled C writes as a call and a return. Natively
+the compiler makes that a jump again; in WebAssembly it stays a call unless it is a wasm tail call, so the game's
+chains of them grew the browser's stack until the page stopped ("Maximum call stack size exceeded", leaving the bar
+after the intro). The page is built with `-mtail-call`, and N64Recomp-web writes each one as a forced tail call then.
+Sound plays through N64Recomp-browser's AudioWorklet output on the browser's audio thread, resampled to its rate
+(`host/src/audio_output.cpp`): SDL2's port plays from the page's thread, where WebGPU's work runs.
+
+Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound.
 
 ## What the build does
 
