@@ -26,12 +26,17 @@ set(CMAKE_C_STANDARD 11)
 
 if (EMSCRIPTEN)
     # Threads are pthreads (SharedArrayBuffer), and the runtime ends a game thread by throwing. -msimd128 is wasm
-    # SIMD, which every browser with WebGPU has.
-    add_compile_options(-pthread -fwasm-exceptions -msimd128)
+    # SIMD and -mtail-call wasm's tail calls, which every browser with WebGPU has. N64Recomp writes a jump to another
+    # function as a call and a return, which clang makes a jump natively; in wasm it stays a call unless N64Recomp-web's
+    # RECOMP_TAIL_CALL makes it a return_call, which takes -mtail-call. Without it a chain of them grows the browser's
+    # stack until the thread dies ("Maximum call stack size exceeded", leaving the bar after the intro).
+    add_compile_options(-pthread -fwasm-exceptions -msimd128 -mtail-call)
     # With -msimd128 xxHash would take its NEON path through Emscripten's arm_neon.h, which doesn't compile in C++
     # there. XXH_HAS_INCLUDE is used for nothing else, so XXH3 stays scalar.
     add_compile_options("-DXXH_HAS_INCLUDE(x)=0")
-    add_link_options(-pthread -fwasm-exceptions)
+    add_link_options(-pthread -fwasm-exceptions -mtail-call)
+    # ccache, if it is on PATH (keep the build directory inside the checkout).
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../tools/N64Recomp-browser/frontend/build_speed.cmake")
 endif()
 
 # OFF builds a headless host (null renderer, no input or sound), for tests.
