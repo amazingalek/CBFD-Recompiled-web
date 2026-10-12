@@ -217,7 +217,8 @@ extern "C" void recomp_entrypoint(uint8_t* rdram, recomp_context* ctx);
 RspExitReason conker_audio_ucode(uint8_t* rdram, uint32_t ucode_addr);
 
 namespace {
-    const std::u8string game_id = u8"conker.n64.us.1.0";
+    // Not const: the web forks' runtime takes it by non-const reference (select_rom, is_rom_valid).
+    std::u8string game_id = u8"conker.n64.us.1.0";
 
     std::atomic<uint32_t> vi_count{0};
 

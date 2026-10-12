@@ -274,8 +274,11 @@ namespace {
         add_rom_option = options->add_option("Add ROM", on_add_rom_selected);
         options->add_setup_controls_option();
         options->add_settings_option();
+#ifndef __EMSCRIPTEN__
+        // A page has no mods (no live recompiler), and a program that ends there leaves it dead.
         options->add_mods_option();
         options->add_exit_option();
+#endif
         show_version();
     }
 
