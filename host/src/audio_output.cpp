@@ -4,6 +4,12 @@
 // (osAiSetNextBuffer) and paces itself by how much is still queued
 // (osAiGetLength), so the SDL device is used in queue mode: the reported
 // remaining frames are what SDL hasn't played yet.
+//
+// On a page, sound plays through N64Recomp-browser's AudioWorklet output
+// (audio_output.h) instead: Emscripten's SDL2 plays its queue from the page's
+// thread, where WebGPU's work runs, and its sound broke up whenever that thread
+// was busy. That output runs at the page's rate, not the game's, so an SDL audio
+// stream resamples to it.
 
 #include <cstdio>
 #include <mutex>
@@ -15,12 +21,56 @@
 
 #include "conker.hpp"
 
+#ifdef __EMSCRIPTEN__
+#   include "audio_output.h"
+#endif
+
 namespace {
     constexpr int channels = 2;
 
     std::mutex audio_mutex;
-    SDL_AudioDeviceID device = 0;
     std::vector<float> convert_buffer;
+
+#ifdef __EMSCRIPTEN__
+    SDL_AudioStream* stream = nullptr;
+    uint32_t game_rate = 0;
+    uint32_t output_rate = 0;
+    std::vector<float> stream_buffer;
+
+    void open_device(uint32_t frequency) {
+        if (output_rate == 0) {
+            output_rate = n64recomp_browser::audio::open(channels);
+        }
+        if (stream != nullptr) {
+            SDL_FreeAudioStream(stream);
+        }
+        game_rate = frequency;
+        stream = SDL_NewAudioStream(AUDIO_F32SYS, channels, (int)frequency, AUDIO_F32SYS, channels, (int)output_rate);
+        if (stream == nullptr) {
+            std::fprintf(stderr, "[audio] SDL_NewAudioStream failed: %s\n", SDL_GetError());
+        }
+    }
+
+    bool is_open() {
+        return stream != nullptr;
+    }
+
+    void queue(const float* frames, size_t sample_count) {
+        SDL_AudioStreamPut(stream, frames, (int)(sample_count * sizeof(float)));
+        int available = SDL_AudioStreamAvailable(stream);
+        stream_buffer.resize(available / sizeof(float));
+        int got = SDL_AudioStreamGet(stream, stream_buffer.data(), available);
+        if (got > 0) {
+            n64recomp_browser::audio::queue(stream_buffer.data(), got / (channels * sizeof(float)));
+        }
+    }
+
+    // In the game's frames.
+    uint32_t queued_frames() {
+        return (uint32_t)((uint64_t)n64recomp_browser::audio::queued_frames() * game_rate / output_rate);
+    }
+#else
+    SDL_AudioDeviceID device = 0;
 
     void open_device(uint32_t frequency) {
         if (!SDL_WasInit(SDL_INIT_AUDIO) && SDL_InitSubSystem(SDL_INIT_AUDIO) != 0) {
@@ -45,6 +95,19 @@ namespace {
         }
         SDL_PauseAudioDevice(device, 0);
     }
+
+    bool is_open() {
+        return device != 0;
+    }
+
+    void queue(const float* frames, size_t sample_count) {
+        SDL_QueueAudio(device, frames, (Uint32)(sample_count * sizeof(float)));
+    }
+
+    uint32_t queued_frames() {
+        return SDL_GetQueuedAudioSize(device) / (channels * sizeof(float));
+    }
+#endif
 }
 
 void conker::audio::set_frequency(uint32_t frequency) {
@@ -54,7 +117,7 @@ void conker::audio::set_frequency(uint32_t frequency) {
 
 void conker::audio::queue_samples(int16_t* samples, size_t sample_count) {
     std::lock_guard lock{audio_mutex};
-    if (device == 0) {
+    if (!is_open()) {
         return;
     }
     // RDRAM is kept as native-endian 32-bit words, so each stereo frame's two 16-bit
@@ -66,12 +129,12 @@ void conker::audio::queue_samples(int16_t* samples, size_t sample_count) {
         convert_buffer[i + 0] = samples[i + 1] * scale;
         convert_buffer[i + 1] = samples[i + 0] * scale;
     }
-    SDL_QueueAudio(device, convert_buffer.data(), (Uint32)(sample_count * sizeof(float)));
+    queue(convert_buffer.data(), sample_count);
 }
 
 size_t conker::audio::get_frames_remaining() {
     std::lock_guard lock{audio_mutex};
-    if (device == 0) {
+    if (!is_open()) {
         return 0;
     }
     // On hardware AI_LEN only counts what is left of the buffer playing now, not the
@@ -80,6 +143,6 @@ size_t conker::audio::get_frames_remaining() {
     // left, so reporting the whole SDL queue makes it underrun and pop. Leave one
     // buffer out, so the queue settles at about a buffer and a half.
     constexpr uint32_t one_buffer = 736;
-    uint32_t queued = SDL_GetQueuedAudioSize(device) / (channels * sizeof(float));
+    uint32_t queued = queued_frames();
     return queued > one_buffer ? queued - one_buffer : 0;
 }
