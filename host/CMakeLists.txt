@@ -37,6 +37,9 @@ if (EMSCRIPTEN)
     add_link_options(-pthread -fwasm-exceptions -mtail-call)
     # ccache, if it is on PATH (keep the build directory inside the checkout).
     include("${CMAKE_CURRENT_SOURCE_DIR}/../tools/N64Recomp-browser/frontend/build_speed.cmake")
+    # The shaders the page specializes at build time and builds before the game starts (rt64_shaders.txt says why
+    # and how it was recorded); before rt64 is added.
+    set(RT64_PREBUILT_SHADER_LIST "${CMAKE_CURRENT_SOURCE_DIR}/rt64_shaders.txt")
 endif()
 
 # OFF builds a headless host (null renderer, no input or sound), for tests.

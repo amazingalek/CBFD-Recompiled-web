@@ -240,6 +240,13 @@ after the intro). The page is built with `-mtail-call`, and N64Recomp-web writes
 Sound plays through N64Recomp-browser's AudioWorklet output on the browser's audio thread, resampled to its rate
 (`host/src/audio_output.cpp`): SDL2's port plays from the page's thread, where WebGPU's work runs.
 
+Before the game passes its first frame, the page builds every shader in `host/rt64_shaders.txt` (298, specialized
+when the page is built; N64Recomp-browser v0.11.0 and its rt64) under a "Preparing graphics" bar, so no scene waits
+on a shader or draws with the slow ubershader meanwhile. In Chrome that takes about 20 seconds on a desktop GPU, on
+every visit: Chrome's pipeline cache can't hold them. Firefox builds none and skips it. To add shaders the list
+misses, open the page with `?record-shaders`, play, and add the `rt64 shader:` lines the console prints that the list
+doesn't have yet.
+
 Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound.
 
 ## What the build does
