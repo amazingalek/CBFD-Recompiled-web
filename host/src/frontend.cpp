@@ -18,7 +18,9 @@
 #include <SDL_syswm.h>
 #endif
 
-#include "nfd.h"
+#ifndef __EMSCRIPTEN__
+#include "nfd.h" // a browser has no native file dialogs; RecompFrontend asks the page instead
+#endif
 
 #include "librecomp/game.hpp"
 #include "recompinput/input_events.h"
@@ -104,7 +106,12 @@ namespace {
         // runs while someone else is playing with the controller on the same machine.
         Uint32 subsystems = SDL_INIT_VIDEO;
         if (SDL_getenv("CONKER_NO_CONTROLLER") == nullptr) {
-            subsystems |= SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC;
+            subsystems |= SDL_INIT_GAMECONTROLLER | SDL_INIT_JOYSTICK;
+#ifndef __EMSCRIPTEN__
+            // Emscripten's SDL2 is built without haptics, and asking for them there fails
+            // the whole call, controllers with it.
+            subsystems |= SDL_INIT_HAPTIC;
+#endif
         }
         if (SDL_Init(subsystems) != 0) {
             std::fprintf(stderr, "[frontend] SDL_Init failed: %s\n", SDL_GetError());
@@ -130,7 +137,9 @@ namespace {
         // The file dialogs (Load ROM, mods). Only after SDL: on macOS, NFD_Init creates the
         // application object if it doesn't exist yet and makes it an accessory app, and SDL
         // then leaves it that way (no Dock icon, and the window opens behind the terminal).
+#ifndef __EMSCRIPTEN__
         NFD_Init();
+#endif
         // The mouse camera's scroll wheel zoom (mouse_camera.cpp).
         conker_mouse_camera_init();
         return nullptr;

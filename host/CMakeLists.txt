@@ -8,6 +8,8 @@ cmake_minimum_required(VERSION 3.20)
 # Linux/WSL and macOS (Metal; use Apple's clang, /usr/bin/clang):
 #   cmake -S host -B host/build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
 #   cmake --build host/build
+# A page for a browser (WebGPU), ConkerRecomp.html, with Emscripten (BUILDING-web.md):
+#   emcmake cmake -S host -B host/build-web -G Ninja -DCMAKE_BUILD_TYPE=Release -DRT64_NAGA_EXECUTABLE=<naga>
 
 project(ConkerRecomp C CXX)
 if (APPLE)
@@ -21,6 +23,16 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_EXTENSIONS OFF)
 # MSVC compiles C as C89 unless told otherwise; o1heap needs C99.
 set(CMAKE_C_STANDARD 11)
+
+if (EMSCRIPTEN)
+    # Threads are pthreads (SharedArrayBuffer), and the runtime ends a game thread by throwing. -msimd128 is wasm
+    # SIMD, which every browser with WebGPU has.
+    add_compile_options(-pthread -fwasm-exceptions -msimd128)
+    # With -msimd128 xxHash would take its NEON path through Emscripten's arm_neon.h, which doesn't compile in C++
+    # there. XXH_HAS_INCLUDE is used for nothing else, so XXH3 stays scalar.
+    add_compile_options("-DXXH_HAS_INCLUDE(x)=0")
+    add_link_options(-pthread -fwasm-exceptions)
+endif()
 
 # OFF builds a headless host (null renderer, no input or sound), for tests.
 option(CONKER_RT64 "Render with RT64 in an SDL window" ON)
@@ -70,12 +82,18 @@ if (MSVC)
 else()
     target_compile_options(RecompiledFuncs PRIVATE
         -include setjmp.h
-        -Wno-implicit-function-declaration
         -Wno-unused-label
         -Wno-unused-variable
         -Wno-unused-but-set-variable
         -fno-strict-aliasing
     )
+    # WebAssembly turns a call to an undeclared function into a trap, so it is an error there; N64Recomp-web's funcs.h
+    # declares everything the recompiled code calls.
+    if (EMSCRIPTEN)
+        target_compile_options(RecompiledFuncs PRIVATE -Werror=implicit-function-declaration)
+    else()
+        target_compile_options(RecompiledFuncs PRIVATE -Wno-implicit-function-declaration)
+    endif()
 endif()
 
 add_executable(ConkerRecomp
@@ -109,7 +127,7 @@ if (CONKER_RT64)
     # RT64 only needs zstd's library. Its programs also copy man pages with a shell
     # command that breaks on a path with an apostrophe.
     set(ZSTD_BUILD_PROGRAMS OFF CACHE BOOL "" FORCE)
-    if (NOT WIN32 AND NOT APPLE)
+    if (NOT WIN32 AND NOT APPLE AND NOT EMSCRIPTEN)
         # On Linux, RT64 renders with Vulkan into an SDL window (as in
         # Banjo: Recompiled): the window is created with SDL_WINDOW_VULKAN.
         # On macOS it renders with Metal into the window's CAMetalLayer.
@@ -122,10 +140,18 @@ if (CONKER_RT64)
         set(NFD_PORTAL ON CACHE BOOL "" FORCE)
     endif()
     add_subdirectory("${RT64_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/rt64")
+    if (EMSCRIPTEN)
+        # What makes the game a page: RT64 and recompui on WebGPU, HOME in IndexedDB, mods off.
+        add_subdirectory("${REPO_ROOT}/tools/N64Recomp-browser/frontend" "${CMAKE_CURRENT_BINARY_DIR}/web_frontend")
+        # fmt 11.1 (N64Recomp's) leans on <cstdlib> arriving through other headers, which Emscripten's libc++ doesn't.
+        target_compile_options(fmt PRIVATE -include cstdlib)
+    endif()
 
     # RecompFrontend: the launcher, config and mod menus (recompui, on RmlUi) and
     # remappable input (recompinput). tools/RecompFrontend is an untracked checkout.
-    if (WIN32)
+    if (EMSCRIPTEN)
+        # Emscripten's port of SDL2, which recompui brings (-sUSE_SDL=2).
+    elseif (WIN32)
         set(sdl2_SOURCE_DIR "${RT64_DIR}/src/contrib/mupen64plus-win32-deps/SDL2-2.26.3")
     else()
         # The system SDL2; RecompFrontend takes its headers from SDL2_INCLUDE_DIRS.
@@ -145,9 +171,10 @@ if (CONKER_RT64)
     else()
         set(DXC_ARCH arm64)
     endif()
-    if (WIN32)
+    # DXC runs on the machine that builds, which for the page isn't the target.
+    if (CMAKE_HOST_WIN32)
         set(DXC "${RT64_DIR}/src/contrib/dxc/bin/x64/dxc.exe")
-    elseif (APPLE)
+    elseif (CMAKE_HOST_APPLE)
         # recompui's shaders also go through spirv_cross_msl (rt64's target) and xcrun metal.
         set(DXC "DYLD_LIBRARY_PATH=${RT64_DIR}/src/contrib/dxc/lib/${DXC_ARCH}" "${RT64_DIR}/src/contrib/dxc/bin/${DXC_ARCH}/dxc-macos")
     else()
@@ -158,7 +185,10 @@ if (CONKER_RT64)
         # Their GCC-style -Wno-unused-parameter is an error for cl.
         set_property(TARGET recompui recompinput PROPERTY COMPILE_OPTIONS "")
     endif()
-    target_link_libraries(ConkerRecomp PRIVATE recompui recompinput nfd)
+    target_link_libraries(ConkerRecomp PRIVATE recompui recompinput)
+    if (NOT EMSCRIPTEN)
+        target_link_libraries(ConkerRecomp PRIVATE nfd)
+    endif()
     # recompui loads its fonts, icons and style sheet from assets/ next to the executable.
     add_custom_command(TARGET ConkerRecomp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:ConkerRecomp>/assets")
@@ -181,7 +211,15 @@ if (CONKER_RT64)
     )
     target_link_libraries(ConkerRecomp PRIVATE rt64)
 
-    if (WIN32)
+    if (EMSCRIPTEN)
+        target_include_directories(ConkerRecomp PRIVATE "${EMSCRIPTEN_SYSROOT}/include/SDL2")
+        # The page, with recompui's assets in its .data file. No ROM: the player picks theirs in the launcher, and it
+        # stays in the browser.
+        n64recomp_browser_frontend_page(ConkerRecomp)
+        target_link_options(ConkerRecomp PRIVATE "SHELL:--preload-file ${CMAKE_CURRENT_SOURCE_DIR}/assets@/assets"
+            # .game's and .debugger's pages (overlays.cpp) lie about 2.4 GB past RDRAM: the heap grows to cover them.
+            -sALLOW_MEMORY_GROWTH=1 -sMAXIMUM_MEMORY=4GB)
+    elseif (WIN32)
         set(SDL2_DIR "${RT64_DIR}/src/contrib/mupen64plus-win32-deps/SDL2-2.26.3")
         target_include_directories(ConkerRecomp PRIVATE "${SDL2_DIR}/include" "${RT64_DIR}/src/contrib/dxc/inc")
         target_link_directories(ConkerRecomp PRIVATE "${SDL2_DIR}/lib/x64")
@@ -205,7 +243,7 @@ if (NOT MSVC AND CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
     target_compile_options(ConkerRecomp PRIVATE -msse4.1)
 endif()
 
-if (UNIX)
+if (UNIX AND NOT EMSCRIPTEN)
     # Exported symbols let the crash handler's backtrace name recompiled functions.
     target_link_options(ConkerRecomp PRIVATE -rdynamic)
 elseif (WIN32)

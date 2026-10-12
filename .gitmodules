@@ -1,15 +1,15 @@
 [submodule "tools/N64Recomp"]
 	path = tools/N64Recomp
-	url = https://github.com/N64Recomp/N64Recomp.git
+	url = https://github.com/amazingalek/N64Recomp-web
 [submodule "tools/N64ModernRuntime"]
 	path = tools/N64ModernRuntime
-	url = https://github.com/N64Recomp/N64ModernRuntime.git
+	url = https://github.com/amazingalek/N64ModernRuntime-web
 [submodule "tools/rt64"]
 	path = tools/rt64
-	url = https://github.com/rt64/rt64.git
+	url = https://github.com/amazingalek/rt64-web
 [submodule "tools/RecompFrontend"]
 	path = tools/RecompFrontend
-	url = https://github.com/N64Recomp/RecompFrontend.git
+	url = https://github.com/amazingalek/RecompFrontend-web
 [submodule "tools/m2c"]
 	path = tools/m2c
 	url = https://github.com/matt-kempster/m2c.git
@@ -25,3 +25,6 @@
 [submodule "conker/tools/mips_to_c"]
 	path = conker/tools/mips_to_c
 	url = https://github.com/matt-kempster/mips_to_c.git
+[submodule "tools/N64Recomp-browser"]
+	path = tools/N64Recomp-browser
+	url = https://github.com/amazingalek/N64Recomp-browser

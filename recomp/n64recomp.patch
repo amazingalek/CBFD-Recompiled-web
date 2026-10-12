@@ -82,10 +82,10 @@ index 9eaaa30..145d4ea 100644
  
          //fmt::print("Jtbl at 0x{:08X} (rom 0x{:08X}) with {} entries used by instr at 0x{:08X}\n", cur_jtbl.vram, cur_jtbl.rom, cur_jtbl.entries.size(), cur_jtbl.jr_vram);
 diff --git a/src/cgenerator.cpp b/src/cgenerator.cpp
-index 94f85c5..9e4d1e5 100644
+index 01e127b..357ddbf 100644
 --- a/src/cgenerator.cpp
 +++ b/src/cgenerator.cpp
-@@ -523,18 +523,21 @@ void N64Recomp::CGenerator::emit_muldiv(InstrId instr_id, int reg1, int reg2) co
+@@ -534,18 +534,21 @@ void N64Recomp::CGenerator::emit_muldiv(InstrId instr_id, int reg1, int reg2) co
          case InstrId::cpu_dmultu:
              fmt::print(output_file, "DMULTU(U64({}), U64({}), &lo, &hi);\n", gpr_to_string(reg1), gpr_to_string(reg2));
              break;
@@ -136,10 +136,10 @@ index 1066aff..5183454 100644
  
                          if (cur_func.vram & 0b11) {
 diff --git a/src/main.cpp b/src/main.cpp
-index 669c4a1..adbcb9f 100644
+index 5aa401d..5eacce8 100644
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -732,6 +732,7 @@ int main(int argc, char** argv) {
+@@ -715,6 +715,7 @@ int main(int argc, char** argv) {
      std::vector<size_t> export_function_indices{};
  
      bool failed_strict_mode = false;
@@ -147,7 +147,7 @@ index 669c4a1..adbcb9f 100644
  
      //#pragma omp parallel for
      for (size_t i = 0; i < context.functions.size(); i++) {
-@@ -783,7 +784,11 @@ int main(int argc, char** argv) {
+@@ -765,13 +766,25 @@ int main(int argc, char** argv) {
              }
              if (result == false) {
                  fmt::print(stderr, "Error recompiling {}\n", func.name);
@@ -159,11 +159,14 @@ index 669c4a1..adbcb9f 100644
 +                failed_function_count++;
              }
          } else if (func.reimplemented) {
-             fmt::print(func_header_file,
-@@ -791,6 +796,10 @@ int main(int argc, char** argv) {
+             declare_function(func.name);
          }
      }
  
++    if (failed_function_count != 0) {
++        exit_failure(fmt::format("{} functions failed to recompile\n", failed_function_count));
++    }
++
 +    if (failed_function_count != 0) {
 +        exit_failure(fmt::format("{} functions failed to recompile\n", failed_function_count));
 +    }

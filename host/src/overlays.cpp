@@ -1,10 +1,13 @@
 // Registers the recompiled code sections with librecomp.
 
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
 
 #ifdef _WIN32
 #   include <Windows.h>
+#elif defined(__EMSCRIPTEN__)
+#   include <unistd.h>
 #else
 #   include <sys/mman.h>
 #endif
@@ -67,6 +70,24 @@ static bool map_segment(uint8_t* rdram, uint32_t vram, const uint32_t* words, si
 #ifdef _WIN32
     DWORD old;
     bool ok = VirtualProtect(begin, end - begin, PAGE_READWRITE, &old) != 0;
+#elif defined(__EMSCRIPTEN__)
+    // In a browser there is no reservation: game memory is one wasm heap, and the
+    // runtime's RDRAM an ordinary allocation in it, so these addresses (about 2.4 GB
+    // past RDRAM) lie past the heap's end. Moving the heap's break past them grows the
+    // memory to cover them and keeps malloc off them (the page links with
+    // ALLOW_MEMORY_GROWTH up to 4 GB). The gap below is address space nothing touches.
+    // .game is mapped before .debugger, which lies above it.
+    bool ok = false;
+    uintptr_t brk = (uintptr_t)sbrk(0);
+    if ((uintptr_t)begin >= brk) {
+        ok = true;
+        while (ok && brk < (uintptr_t)end) {
+            uintptr_t step = std::min<uintptr_t>((uintptr_t)end - brk, 0x40000000); // sbrk takes an int
+            // Another thread's malloc moving the break in between would own part of the range.
+            ok = (uintptr_t)sbrk((intptr_t)step) == brk;
+            brk += step;
+        }
+    }
 #else
     bool ok = mprotect(begin, end - begin, PROT_READ | PROT_WRITE) == 0;
 #endif

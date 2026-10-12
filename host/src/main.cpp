@@ -30,8 +30,10 @@
 
 #include "conker.hpp"
 
-#if defined(CONKER_RT64)
+#if defined(CONKER_RT64) && !defined(__EMSCRIPTEN__)
 #include "nfd.h"
+#endif
+#if defined(CONKER_RT64)
 #include "recompui/program_config.h"
 #include "util/file.h"
 #endif
@@ -486,8 +488,11 @@ int main(int argc, char** argv) {
     }
 
     recomp::Configuration cfg{};
+#ifndef __EMSCRIPTEN__
+    // The web forks' runtime predates --game (a page always opens the launcher).
     cfg.argc = (int)runtime_argv.size();
     cfg.argv = runtime_argv.data();
+#endif
     cfg.project_version = recomp::Version{ 0, 1, 5 };
     cfg.rsp_callbacks.get_rsp_microcode = get_rsp_microcode;
     cfg.audio_callbacks = { queue_samples, get_frames_remaining, set_frequency };
@@ -519,7 +524,7 @@ int main(int argc, char** argv) {
 
     recomp::start(cfg);
 
-#if defined(CONKER_RT64)
+#if defined(CONKER_RT64) && !defined(__EMSCRIPTEN__)
     if (!headless) {
         NFD_Quit();
     }
