@@ -2,6 +2,13 @@
 
 # Conker's Bad Fur Day: Recompiled
 
+> [!WARNING]
+> **This is amazingalek/CBFD-Recompiled-web, a fork, not Conker's Bad Fur Day: Recompiled.** Its `web` branch builds
+> the game into a web page (WebGPU, through [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)),
+> and everything on that branch past upstream's commits was written by AI (Claude) for this fork. It is not made,
+> endorsed or supported by the Conker's Bad Fur Day: Recompiled authors: please don't take issues with this fork to
+> them. Building the page: [The web page](#the-web-page).
+
 A native PC port of **Conker's Bad Fur Day** (N64, US version). It's built by
 statically recompiling the game with [N64Recomp](https://github.com/N64Recomp/N64Recomp),
 starting from the [Conker decompilation](https://github.com/mkst/conker). It runs on
@@ -173,6 +180,35 @@ git pull
 
 The script updates the submodules and their patches, and only rebuilds what
 changed.
+
+## The web page
+
+This fork's `web` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
+draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are the web
+forks at the commits [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)'s `forks.txt` names (with
+this game's patches in `recomp/` on top, as before), and `tools/N64Recomp-browser` makes the game a page. Mods are
+off on the page: the runtime can't recompile a mod's code there.
+
+Build and recompile natively first (`build.cmd` or `build.sh` with your ROM: the generated code is the same for both
+builds). Then, with the Emscripten SDK installed and activated and [naga](https://github.com/gfx-rs/wgpu/tree/trunk/naga)
+installed (`cargo install naga-cli`):
+
+```sh
+embuilder build sdl2-mt freetype-legacysjlj      # once
+emcmake cmake -S host -B host/build-web -G Ninja -DCMAKE_BUILD_TYPE=Release -DRT64_NAGA_EXECUTABLE=<naga>
+cmake --build host/build-web
+```
+
+`host/build-web` then holds `ConkerRecomp.html`, `.js`, `.wasm`, `.data` and `coi_serviceworker.js`. The page needs a
+browser with WebGPU (Chrome or Edge 113 and up) and must be cross-origin isolated: serve the folder with
+`Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`, or on a host that can't set
+headers, as is, and `coi_serviceworker.js` sets them after one reload. The player picks their ROM in the launcher; it,
+the settings and the saves are kept in the browser's IndexedDB for that origin.
+
+The game's code runs at TLB-mapped addresses, and some of it reads tables in its own code pages, which the host copies
+to RDRAM + 0x95000000 and + 0x96000000 (`host/src/overlays.cpp`). Natively that is inside the runtime's 4 GB
+reservation; on a page RDRAM is an allocation in the wasm heap, so the host moves the heap's break past those addresses
+and the page's memory grows to about 2.5 GB of address space, most of it never touched.
 
 ## What the build does
 
