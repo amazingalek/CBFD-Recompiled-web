@@ -9,6 +9,10 @@
 > endorsed or supported by the Conker's Bad Fur Day: Recompiled authors: please don't take issues with this fork to
 > them. Building the page: [The web page](#the-web-page).
 
+**Play it in the browser: https://amazingalek.github.io/CBFD-Recompiled-web/**, with your own ROM, picked in the
+launcher and kept in the browser. It needs WebGPU (Chrome or Edge 113 and up). The page is built from this branch
+where the ROM is and published with N64Recomp-browser's `tools/publish_page.sh`, so it can be a commit or two behind.
+
 A native PC port of **Conker's Bad Fur Day** (N64, US version). It's built by
 statically recompiling the game with [N64Recomp](https://github.com/N64Recomp/N64Recomp),
 starting from the [Conker decompilation](https://github.com/mkst/conker). It runs on
