@@ -290,6 +290,10 @@ namespace {
 
     std::unique_ptr<ultramodern::renderer::RendererContext> create_render_context(
         uint8_t* rdram, ultramodern::renderer::WindowHandle window_handle, bool developer_mode) {
+        // Render to RAM stays on (RT64's default), on a page too, where each display list waits for the frame's
+        // readback (README, The web page): the camera reads a row of the depth buffer to step aside from walls
+        // (func_1512E5F0) and the lens flares read it to hide behind them (func_1517E1AC). Without it both read only
+        // the game's own far fill.
         return recompui::renderer::create_render_context(rdram, window_handle,
             ultramodern::renderer::PresentationMode::PresentEarly,
             // TEMP-DEBUG: CONKER_DEV_MODE turns on RT64's developer tools (F1: inspector).

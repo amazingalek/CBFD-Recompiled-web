@@ -213,7 +213,25 @@ the settings and the saves are kept in the browser's IndexedDB for that origin.
 The game's code runs at TLB-mapped addresses, and some of it reads tables in its own code pages, which the host copies
 to RDRAM + 0x95000000 and + 0x96000000 (`host/src/overlays.cpp`). Natively that is inside the runtime's 4 GB
 reservation; on a page RDRAM is an allocation in the wasm heap, so the host moves the heap's break past those addresses
-and the page's memory grows to about 2.5 GB of address space, most of it never touched.
+and the page's memory grows to about 2.5 GB of address space, most of it never touched. A fixed 3 GB heap (no growth)
+measured no faster, and `-sGROWABLE_ARRAYBUFFERS=2` stops at the first compute pass: emdawnwebgpu passes WebGPU views
+of the heap, which the browser refuses over a growable buffer. So it grows.
+
+RT64's render to RAM draws each frame a second time at the N64's resolution and reads it back into RDRAM. It stays on,
+on the page too, where each display list waits for that readback: the camera reads a row of the depth buffer to step
+aside from walls, and the lens flares read it to hide behind them. Without it both read only the game's own "far"
+fill. Measured on 2026-10-12 in headless Chrome at 960x720, the bar after Start Game, 60 s a run, runs interleaved,
+with the host's CPU 100% busy with other work and its GPU 20-35% busy. Per list is the wall time of RT64's work on a
+display list, median:
+
+```
+                     lists/s   per list   the browser's CPU
+render to RAM on      19-28     20-27 ms   2.6-2.9 cores
+render to RAM off     24-30      7-11 ms   2.4-2.5 cores (one run 4.0)
+```
+
+One of the five runs with it on stopped drawing three seconds into the game, which none of the five with it off did.
+This hasn't been looked into.
 
 The code leaves a function by jumping to another one, which the recompiled C writes as a call and a return. Natively
 the compiler makes that a jump again; in WebAssembly it stays a call unless it is a wasm tail call, so the game's
