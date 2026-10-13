@@ -8,7 +8,7 @@
 # OPTIONS, CHAPTERS), Hungover from the chapter menu, a new game's opening cutscene through to Conker walking in the
 # field, the pause menu, and seven of the multiplayer modes, one player against bots, about a minute each (Raptor
 # among them). Not yet: any chapter after Hungover, the Options screens, split screen (needs a second controller).
-# A description missing here draws with the ubershader until its shader is built, as before. Flags follow settings
+# A description missing here draws with the ubershader until its shader is built. Flags follow settings
 # (filtering, HDR, MSAA, upscaling), so a change to one of those defaults means recording again.
 00000000 00082c3f fcffe9ff ffd21f0f 0803540e
 00000000 00202cff fc121824 5531feff 0003540b

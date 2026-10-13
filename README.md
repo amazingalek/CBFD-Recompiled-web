@@ -11,7 +11,7 @@
 
 **Play it in the browser: https://amazingalek.github.io/CBFD-Recompiled-web/**, with your own ROM, picked in the
 launcher and kept in the browser. It needs WebGPU (Chrome or Edge 113 and up). The page is built from this branch
-where the ROM is and published with N64Recomp-browser's `tools/publish_page.sh`, so it can be a commit or two behind.
+and published with N64Recomp-browser's `tools/publish_page.sh`, so it can be a commit or two behind.
 
 A native PC port of **Conker's Bad Fur Day** (N64, US version). It's built by
 statically recompiling the game with [N64Recomp](https://github.com/N64Recomp/N64Recomp),
@@ -190,7 +190,7 @@ changed.
 This fork's `main` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
 draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are the web
 forks at the commits [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)'s `forks.txt` names (with
-this game's patches in `recomp/` on top, as before), and `tools/N64Recomp-browser` makes the game a page. Mods are
+this game's patches in `recomp/` on top), and `tools/N64Recomp-browser` makes the game a page. Mods are
 off on the page: the runtime can't recompile a mod's code there.
 
 Build and recompile natively first (`build.cmd` or `build.sh` with your ROM: the generated code is the same for both
@@ -221,7 +221,7 @@ RT64's render to RAM draws each frame a second time at the N64's resolution and 
 on the page too, where each display list waits for that readback: the camera reads a row of the depth buffer to step
 aside from walls, and the lens flares read it to hide behind them. Without it both read only the game's own "far"
 fill. Measured on 2026-10-12 in headless Chrome at 960x720, the bar after Start Game, 60 s a run, runs interleaved,
-with the host's CPU 100% busy with other work and its GPU 20-35% busy. Per list is the wall time of RT64's work on a
+under heavy load from other work (CPU 100%, GPU 20-35%). Per list is the wall time of RT64's work on a
 display list, median:
 
 ```

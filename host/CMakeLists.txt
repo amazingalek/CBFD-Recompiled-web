@@ -8,7 +8,7 @@ cmake_minimum_required(VERSION 3.20)
 # Linux/WSL and macOS (Metal; use Apple's clang, /usr/bin/clang):
 #   cmake -S host -B host/build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=RelWithDebInfo
 #   cmake --build host/build
-# A page for a browser (WebGPU), ConkerRecomp.html, with Emscripten (BUILDING-web.md):
+# A page for a browser (WebGPU), ConkerRecomp.html, with Emscripten (README.md, "The web page"):
 #   emcmake cmake -S host -B host/build-web -G Ninja -DCMAKE_BUILD_TYPE=Release -DRT64_NAGA_EXECUTABLE=<naga>
 
 project(ConkerRecomp C CXX)
