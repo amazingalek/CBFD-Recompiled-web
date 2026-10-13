@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 15eac65..6bdab29 100644
+index e55787f..83114fd 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -391,6 +391,7 @@ set (SOURCES
+@@ -400,6 +400,7 @@ set (SOURCES
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3d.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex2.cpp"
@@ -10,7 +10,7 @@ index 15eac65..6bdab29 100644
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dgolden.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dpd.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dwave.cpp"
-@@ -423,6 +424,7 @@ set (SOURCES
+@@ -432,6 +433,7 @@ set (SOURCES
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_projection.cpp"
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_rdp.cpp"
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_rdp_tmem.cpp"
@@ -1594,7 +1594,7 @@ index 61bb3b1..782ed13 100644
          void setVertexSegmentV1(bool isEnabled, uint32_t vertexElement, uint32_t vertexAddress, uint32_t baseSegmentAddress);
          template<uint32_t floatCount, uint32_t vertexSize>
 diff --git a/src/hle/rt64_state.cpp b/src/hle/rt64_state.cpp
-index b8ce36a..c6b4373 100644
+index 9a8b286..a3dfcf1 100644
 --- a/src/hle/rt64_state.cpp
 +++ b/src/hle/rt64_state.cpp
 @@ -4,6 +4,8 @@
@@ -1603,10 +1603,10 @@ index b8ce36a..c6b4373 100644
  
 +#include "common/rt64_fblog.h"
 +
+ #include <algorithm>
  #include <cassert>
  #include <cinttypes>
- 
-@@ -540,6 +542,27 @@ namespace RT64 {
+@@ -542,6 +544,27 @@ namespace RT64 {
          FramebufferPair &fbPair = workload.fbPairs[fbPairIndex];
          fbPair.flushReason = flushReason;
  
@@ -1634,7 +1634,7 @@ index b8ce36a..c6b4373 100644
          // Add all the pending framebuffer operations to the first one that was found.
          flushFramebufferOperations(fbPair);
  
-@@ -551,6 +574,10 @@ namespace RT64 {
+@@ -553,6 +576,10 @@ namespace RT64 {
              uint32_t depthWriteWidth = 0;
              RT64::Framebuffer *colorFb = &framebufferManager.get(colorImg.address, colorImg.siz, colorImg.width, colorHeight);
              colorImg.formatChanged = colorFb->widthChanged || colorFb->sizChanged || colorFb->rdramChanged;
@@ -1645,7 +1645,7 @@ index b8ce36a..c6b4373 100644
              colorFb->clearChanged();
              colorFb->addDitherPatterns(fbPair.ditherPatterns);
  
-@@ -562,6 +589,11 @@ namespace RT64 {
+@@ -564,6 +591,11 @@ namespace RT64 {
  
                  depthFb = &framebufferManager.get(depthImg.address, G_IM_SIZ_16b, colorImg.width, colorHeight);
                  depthImg.formatChanged = depthFb->widthChanged || depthFb->sizChanged || depthFb->rdramChanged;
@@ -1657,7 +1657,7 @@ index b8ce36a..c6b4373 100644
                  depthFb->clearChanged();
  
                  // Detect a fast path by checking if the framebuffer pair previous to the current one only did fill rects.
-@@ -604,6 +636,10 @@ namespace RT64 {
+@@ -606,6 +638,10 @@ namespace RT64 {
              }
          }
  
@@ -1668,7 +1668,7 @@ index b8ce36a..c6b4373 100644
          // Store the process Id this framebuffer pair was submitted under.
          fbPair.displayListAddress = displayListAddress;
          fbPair.displayListCounter = displayListCounter;
-@@ -630,6 +666,16 @@ namespace RT64 {
+@@ -634,6 +670,16 @@ namespace RT64 {
          {
              framebufferManager.storeRAM(workload.fbStorage, RDRAM, fbPairIndex);
              framebufferManager.checkRAM(RDRAM, differentFbs, true);
@@ -1686,7 +1686,7 @@ index b8ce36a..c6b4373 100644
                  RenderWorkerExecution execution(ext.framebufferGraphicsWorker);
                  framebufferManager.uploadRAM(ext.framebufferGraphicsWorker, differentFbs.data(), differentFbs.size(), workload.fbChangePool, RDRAM, true, drawFbOperations, drawFbDiscards, ext.shaderLibrary);
 diff --git a/src/hle/rt64_workload_queue.cpp b/src/hle/rt64_workload_queue.cpp
-index de759f3..4f381b7 100644
+index 071a8de..77743e2 100644
 --- a/src/hle/rt64_workload_queue.cpp
 +++ b/src/hle/rt64_workload_queue.cpp
 @@ -4,6 +4,8 @@
@@ -1830,7 +1830,7 @@ index de759f3..4f381b7 100644
                                  G_IM_FMT_DEPTH, f, depthFb->readHeight, readRowCount, ext.shaderLibrary);
  
 diff --git a/src/render/rt64_framebuffer_renderer.cpp b/src/render/rt64_framebuffer_renderer.cpp
-index bc32a6b..a571c26 100644
+index 2747dca..4e19970 100644
 --- a/src/render/rt64_framebuffer_renderer.cpp
 +++ b/src/render/rt64_framebuffer_renderer.cpp
 @@ -7,6 +7,7 @@

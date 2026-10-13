@@ -218,9 +218,11 @@ measured no faster, and `-sGROWABLE_ARRAYBUFFERS=2` stops at the first compute p
 of the heap, which the browser refuses over a growable buffer. So it grows.
 
 RT64's render to RAM draws each frame a second time at the N64's resolution and reads it back into RDRAM. It stays on,
-on the page too, where each display list waits for that readback: the camera reads a row of the depth buffer to step
-aside from walls, and the lens flares read it to hide behind them. Without it both read only the game's own "far"
-fill. Measured on 2026-10-12 in headless Chrome at 960x720, the bar after Start Game, 60 s a run, runs interleaved,
+on the page too: the camera reads a row of the depth buffer to step aside from walls, and the lens flares read it to
+hide behind them. Without it both read only the game's own "far" fill. A display list that waited for that readback
+took two to three times as long, so the page copies the frame into RDRAM a list late
+(`recompui::renderer::set_render_to_ram_late`): the copy lands when the next list starts, and the list doesn't wait.
+The camera steps aside from walls the same way with it. Measured on 2026-10-12 in headless Chrome at 960x720, the bar after Start Game, 60 s a run, runs interleaved,
 under heavy load from other work (CPU 100%, GPU 20-35%). Per list is the wall time of RT64's work on a
 display list, median:
 
@@ -232,6 +234,15 @@ render to RAM off     24-30      7-11 ms   2.4-2.5 cores (one run 4.0)
 
 One of the five runs with it on stopped drawing three seconds into the game, which none of the five with it off did.
 This hasn't been looked into.
+
+With the copy a list late, measured on 2026-10-13 in headless Chrome 155 at 960x720, Windy walked and turned in for
+about 100 s a run, three runs of each interleaved, with the host ~60% busy with other work:
+
+```
+                            lists/s   per list
+copy before the list ends      30     14.8-16.4 ms
+copy a list late               30     10.7-11.8 ms
+```
 
 The code leaves a function by jumping to another one, which the recompiled C writes as a call and a return. Natively
 the compiler makes that a jump again; in WebAssembly it stays a call unless it is a wasm tail call, so the game's
