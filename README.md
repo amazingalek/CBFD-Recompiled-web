@@ -240,16 +240,21 @@ after the intro). The page is built with `-mtail-call`, and N64Recomp-web writes
 Sound plays through N64Recomp-browser's AudioWorklet output on the browser's audio thread, resampled to its rate
 (`host/src/audio_output.cpp`): SDL2's port plays from the page's thread, where WebGPU's work runs.
 
-Before the game passes its first frame, the page builds every shader in `host/rt64_shaders.txt` (298, specialized
-and run through spirv-opt when the page is built: 252 pipelines; N64Recomp-browser and its rt64) under a "Preparing
-graphics" panel, in every browser, so no scene waits on a shader or draws with the slow ubershader meanwhile. The list
-has no sections, so all of it is built before the game. In headless Chrome on a desktop GPU that took 7.8 s on a first
-visit and 3.2 s on the next (2026-10-13, RTX 2070): Chrome keeps only part of them (its pipeline cache is 6 MB for
-every site together). A shader the list misses is built behind the game, and the page remembers it (`localStorage`)
-and builds it with the rest on the next visit. To add it to the list, open the page with `?record-shaders`, play, and
-add the `rt64 shader:` lines the console prints that the list doesn't have yet.
+The page builds the shaders the game uses from a list, `host/rt64_shaders.txt` (specialized and run through spirv-opt
+when the page is built; N64Recomp-browser and its rt64), under a "Preparing graphics" panel with the game waiting, in
+every browser, so no scene draws with the slow ubershader. The list is in sections: the first, the intro and the bar's
+menus (85 shaders, 75 pipelines), is built before the game passes its first frame, and each of the others, one a
+chapter (It's War has two) and one a multiplayer mode, when the game first draws with it. In headless Chrome on a
+desktop GPU (2026-10-13, RTX 2070, under heavy load from other work) the first took 5.4 s on a first visit and 0.2 s
+on the next (2.3-3.9 s once a visit to the chapters had filled Chrome's pipeline cache, 6 MB for every site together),
+and a chapter's 4.6 s (Windy, 82 pipelines) to 6.1 s (Uga Buga, 116) on a first visit. A shader the list misses is
+built behind the game, and the page remembers it (`localStorage`) and builds it with its section on the next visit.
+The list is recorded by code, not by playing: `bash tools/record_shaders.sh <build dir> <ROM>` (its header says how;
+about 50 minutes) has `tools/shader_survey.js` start every chapter's places from the game's own checkpoint table, and
+each multiplayer mode, in headless Chrome, and the list's header says what it covers.
 
-Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound.
+Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound; and,
+started by the recording's script, a few seconds of each chapter's places and of seven multiplayer modes.
 
 ## What the build does
 
