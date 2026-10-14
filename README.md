@@ -275,6 +275,10 @@ the bar drew 55 frames a second and Windy 57 (headless Chrome 155: 3.1 and 3.8 s
 of more than 2 GB of memory as a WebGPU argument, and Conker's heap grows past that, so the page starts there only
 since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the heap.
 
+Built from upstream's own `tools/` submodules with N64Recomp-browser's patches on top (2026-10-14, RTX 2070): in
+headless Chrome 155 the intro, the bar and Conker walking in Hungover, with sound; in Firefox 157 the first section
+took 10.4 s, then the intro and the bar, with sound. Neither showed a WebGPU error.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
