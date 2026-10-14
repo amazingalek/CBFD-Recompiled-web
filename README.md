@@ -283,12 +283,14 @@ Built from upstream's own `tools/` submodules with N64Recomp-browser's patches o
 headless Chrome 155 the intro, the bar and Conker walking in Hungover, with sound; in Firefox 157 the first section
 took 10.4 s, then the intro and the bar, with sound. Neither showed a WebGPU error.
 
-Played from the published page (main e20bd10, N64Recomp-browser v0.28.0) on 2026-10-14 (RTX 2070, a busy host): in
-headless Chrome 155 the launcher, Add ROM, the intro and, started by the recording's script, Windy, with sound and no
-WebGPU errors. On a first visit the game didn't wait at the start, and drew 28-38 frames a second for about 10 s while
-the first section built behind it; Windy, reached before that was done, waited 3.5 s for 32 shaders and then drew
-52-56; all 403 pipelines were built 75 s after the page opened. In Firefox 158 the first section took 14.8 s, the GPU
-busy with other work, and then the intro and the bar drew 42-58 frames a second.
+Played from the published page (main 065bc7d, N64Recomp-browser 7b80155) on 2026-10-14 (RTX 2070, an idle host), by
+`tools/shader_plan.json` with N64Recomp-browser's `tools/play_page.mjs`: the launcher, Add ROM, the intro and Windy in
+both browsers, with sound. On a first visit a local build of the same commit in headless Chrome 155 didn't wait at the
+start, and Windy waited 2.8 s for 32 shaders and then drew 55-56 frames a second, with no WebGPU errors. Firefox 158
+waited 7.2 s for the first section and 11.2 s for Windy's 82, then drew 60, until about 18 s after the plan's skip to
+Windy's checkpoint 33: there it logged "Out of Memory" and lost the device, in three runs of three, the page built on
+v0.28.0 too. On a 3840x2000 canvas, the stand-in for integrated graphics, Chrome never waited and drew 48-55; Firefox
+waited 7.3 s and then drew 57-61.
 
 ## What the build does
 
