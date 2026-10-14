@@ -255,11 +255,15 @@ Sound plays through N64Recomp-browser's AudioWorklet output on the browser's aud
 (`host/src/audio_output.cpp`): SDL2's port plays from the page's thread, where WebGPU's work runs.
 
 The page builds the shaders the game uses from a list, `host/rt64_shaders.txt` (specialized and run through spirv-opt
-when the page is built; N64Recomp-browser and its rt64), under a "Preparing graphics" panel with the game waiting, in
-every browser, so no scene draws with the slow ubershader. The list is in sections: the first, the intro and the bar's
-menus (85 shaders, 75 pipelines), is built before the game passes its first frame, and each of the others, one a
-chapter (It's War has two) and one a multiplayer mode, when the game first draws with it. In headless Chrome on a
-desktop GPU (2026-10-13, RTX 2070, under heavy load from other work) the first took 5.4 s on a first visit and 0.2 s
+when the page is built; N64Recomp-browser and its rt64), so no scene draws with the slow ubershader. The list is in sections: the first, the intro and the bar's menus (85
+shaders, 75 pipelines), then one a chapter (It's War has two) and one a multiplayer mode. In Chrome the whole list is
+built behind the game from its first frame, the first section first on half the host's cores, then the rest one at a
+time with a section the game has reached moved to the front, and the game waits only when a frame wants 4 or more of a
+section's shaders that aren't built yet, under a small "Preparing graphics" indicator in a corner. Firefox builds a
+pipeline in line with the rest of its GPU work, so there the first section is built before the game passes its first
+frame and each of the others when the game first draws with it, the game waiting. Before N64Recomp-browser v0.27.0
+Chrome waited the same way: in headless Chrome on a desktop GPU (2026-10-13, RTX 2070, under heavy load from other
+work) the first took 5.4 s on a first visit and 0.2 s
 on the next (2.3-3.9 s once a visit to the chapters had filled Chrome's pipeline cache, 6 MB for every site together),
 and a chapter's 4.6 s (Windy, 82 pipelines) to 6.1 s (Uga Buga, 116) on a first visit. A shader the list misses is
 built behind the game, and the page remembers it (`localStorage`) and builds it with its section on the next visit.
@@ -278,6 +282,13 @@ since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the
 Built from upstream's own `tools/` submodules with N64Recomp-browser's patches on top (2026-10-14, RTX 2070): in
 headless Chrome 155 the intro, the bar and Conker walking in Hungover, with sound; in Firefox 157 the first section
 took 10.4 s, then the intro and the bar, with sound. Neither showed a WebGPU error.
+
+Played from the published page (main e20bd10, N64Recomp-browser v0.28.0) on 2026-10-14 (RTX 2070, a busy host): in
+headless Chrome 155 the launcher, Add ROM, the intro and, started by the recording's script, Windy, with sound and no
+WebGPU errors. On a first visit the game didn't wait at the start, and drew 28-38 frames a second for about 10 s while
+the first section built behind it; Windy, reached before that was done, waited 3.5 s for 32 shaders and then drew
+52-56; all 403 pipelines were built 75 s after the page opened. In Firefox 158 the first section took 14.8 s, the GPU
+busy with other work, and then the intro and the bar drew 42-58 frames a second.
 
 ## What the build does
 
