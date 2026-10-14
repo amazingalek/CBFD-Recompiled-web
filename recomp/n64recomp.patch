@@ -1,5 +1,5 @@
 diff --git a/src/analysis.cpp b/src/analysis.cpp
-index 4564ec7..145d4ea 100644
+index 9eaaa30..145d4ea 100644
 --- a/src/analysis.cpp
 +++ b/src/analysis.cpp
 @@ -151,8 +151,9 @@ bool analyze_instruction(const rabbitizer::InstructionCpu& instr, const N64Recom
@@ -26,26 +26,13 @@ index 4564ec7..145d4ea 100644
              }
              size_t stack_offset = imm / 4;
              if (stack_offset >= stack_states.size()) {
-@@ -314,33 +316,34 @@ bool N64Recomp::analyze_function(const N64Recomp::Context& context, const N64Rec
+@@ -314,14 +316,34 @@ bool N64Recomp::analyze_function(const N64Recomp::Context& context, const N64Rec
              end_address = stats.jump_tables[i + 1].vram;
          }
  
--        // The jump table is read at the function's ROM offset, as if it were in the function's own section, unless
--        // another section loaded beside it holds its address: GoldenEye keeps every jump table in a .rodata section of
--        // its own. A section overlapping the function's in memory is an overlay that is never loaded with it (Rush 2049's
--        // two overlays share their addresses, and a table just past the end of one lies inside the other).
+-        // TODO this assumes that the jump table is in the same section as the function itself
+-        cur_jtbl.rom = cur_jtbl.vram + func.rom - func.vram;
 -        cur_jtbl.section_index = func.section_index;
--        uint32_t jtbl_rom_offset = func.rom - func.vram;
--        const N64Recomp::Section& func_section = context.sections[func.section_index];
--        if (cur_jtbl.vram < func_section.ram_addr || cur_jtbl.vram >= func_section.ram_addr + func_section.size) {
--            for (size_t section_index = 0; section_index < context.sections.size(); section_index++) {
--                const N64Recomp::Section& section = context.sections[section_index];
--                bool overlaps_func_section = section.ram_addr < func_section.ram_addr + func_section.size &&
--                    func_section.ram_addr < section.ram_addr + section.size;
--                if (!overlaps_func_section && cur_jtbl.vram >= section.ram_addr && cur_jtbl.vram < section.ram_addr + section.size) {
--                    cur_jtbl.section_index = static_cast<uint16_t>(section_index);
--                    jtbl_rom_offset = section.rom_addr - section.ram_addr;
--                    break;
 +        // Find the section holding the jump table. It is usually the function's own section, but games whose
 +        // code runs at TLB-mapped addresses (e.g. Conker) keep rodata in a separate KSEG0 data section.
 +        uint16_t jtbl_section_index = func.section_index;
@@ -58,10 +45,9 @@ index 4564ec7..145d4ea 100644
 +                        jtbl_section_index = (uint16_t)s;
 +                        break;
 +                    }
-                 }
-             }
-         }
--        cur_jtbl.rom = cur_jtbl.vram + jtbl_rom_offset;
++                }
++            }
++        }
 +        const Section& jtbl_section = context.sections[jtbl_section_index];
 +        if (cur_jtbl.vram < jtbl_section.ram_addr || cur_jtbl.vram >= jtbl_section.ram_addr + jtbl_section.size) {
 +            fmt::print("No section contains jump table at 0x{:08X} for instruction at 0x{:08X}\n", cur_jtbl.vram, cur_jtbl.jr_vram);
@@ -74,15 +60,13 @@ index 4564ec7..145d4ea 100644
  
          while (vram < end_address) {
              // Retrieve the current entry of the jump table
--            uint32_t rom_addr = vram + jtbl_rom_offset;
--            if (rom_addr + sizeof(uint32_t) > context.rom.size()) {
--                break;
--            }
+-            // TODO same as above
+-            uint32_t rom_addr = vram + func.rom - func.vram;
 +            uint32_t rom_addr = vram - jtbl_section.ram_addr + jtbl_section.rom_addr;
              uint32_t jtbl_word = byteswap(*reinterpret_cast<const uint32_t*>(&context.rom[rom_addr]));
  
              if (cur_jtbl.got_offset.has_value() && got_ram_addr.has_value()) {
-@@ -359,8 +362,12 @@ bool N64Recomp::analyze_function(const N64Recomp::Context& context, const N64Rec
+@@ -340,8 +362,12 @@ bool N64Recomp::analyze_function(const N64Recomp::Context& context, const N64Rec
          }
  
          if (cur_jtbl.entries.size() == 0) {
@@ -98,10 +82,10 @@ index 4564ec7..145d4ea 100644
  
          //fmt::print("Jtbl at 0x{:08X} (rom 0x{:08X}) with {} entries used by instr at 0x{:08X}\n", cur_jtbl.vram, cur_jtbl.rom, cur_jtbl.entries.size(), cur_jtbl.jr_vram);
 diff --git a/src/cgenerator.cpp b/src/cgenerator.cpp
-index e777506..d0f2a6d 100644
+index 94f85c5..9e4d1e5 100644
 --- a/src/cgenerator.cpp
 +++ b/src/cgenerator.cpp
-@@ -542,18 +542,21 @@ void N64Recomp::CGenerator::emit_muldiv(InstrId instr_id, int reg1, int reg2) co
+@@ -523,18 +523,21 @@ void N64Recomp::CGenerator::emit_muldiv(InstrId instr_id, int reg1, int reg2) co
          case InstrId::cpu_dmultu:
              fmt::print(output_file, "DMULTU(U64({}), U64({}), &lo, &hi);\n", gpr_to_string(reg1), gpr_to_string(reg2));
              break;
@@ -152,10 +136,10 @@ index 1066aff..5183454 100644
  
                          if (cur_func.vram & 0b11) {
 diff --git a/src/main.cpp b/src/main.cpp
-index 34b2643..1fdbf8f 100644
+index 669c4a1..adbcb9f 100644
 --- a/src/main.cpp
 +++ b/src/main.cpp
-@@ -721,6 +721,7 @@ int main(int argc, char** argv) {
+@@ -732,6 +732,7 @@ int main(int argc, char** argv) {
      std::vector<size_t> export_function_indices{};
  
      bool failed_strict_mode = false;
@@ -163,7 +147,7 @@ index 34b2643..1fdbf8f 100644
  
      //#pragma omp parallel for
      for (size_t i = 0; i < context.functions.size(); i++) {
-@@ -771,13 +772,25 @@ int main(int argc, char** argv) {
+@@ -783,7 +784,11 @@ int main(int argc, char** argv) {
              }
              if (result == false) {
                  fmt::print(stderr, "Error recompiling {}\n", func.name);
@@ -175,14 +159,11 @@ index 34b2643..1fdbf8f 100644
 +                failed_function_count++;
              }
          } else if (func.reimplemented) {
-             declare_function(func.name);
+             fmt::print(func_header_file,
+@@ -791,6 +796,10 @@ int main(int argc, char** argv) {
          }
      }
  
-+    if (failed_function_count != 0) {
-+        exit_failure(fmt::format("{} functions failed to recompile\n", failed_function_count));
-+    }
-+
 +    if (failed_function_count != 0) {
 +        exit_failure(fmt::format("{} functions failed to recompile\n", failed_function_count));
 +    }
@@ -191,10 +172,10 @@ index 34b2643..1fdbf8f 100644
          if (config.single_file_output || config.functions_per_output_file > 1) {
              current_output_file.close();
 diff --git a/src/recompilation.cpp b/src/recompilation.cpp
-index b00d143..47f80e2 100644
+index c228433..57fbab7 100644
 --- a/src/recompilation.cpp
 +++ b/src/recompilation.cpp
-@@ -797,7 +797,13 @@ bool recompile_function_impl(GeneratorType& generator, const N64Recomp::Context&
+@@ -791,7 +791,13 @@ bool recompile_function_impl(GeneratorType& generator, const N64Recomp::Context&
  
              // If this is a branch or a direct jump, add it to the local label list
              if (instr.isBranch() || instr.getUniqueId() == rabbitizer::InstrId::UniqueId::cpu_j) {

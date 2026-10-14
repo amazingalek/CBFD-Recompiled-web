@@ -25,9 +25,13 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_C_STANDARD 11)
 
 if (EMSCRIPTEN)
+    # tools/rt64, tools/N64ModernRuntime and tools/RecompFrontend with N64Recomp-browser's web support patched in on
+    # top of recomp/'s patches, if build.sh hasn't already (README.md, "The web page").
+    include("${CMAKE_CURRENT_SOURCE_DIR}/../tools/N64Recomp-browser/patches/apply.cmake")
+    n64recomp_browser_apply_patches("${CMAKE_CURRENT_SOURCE_DIR}/../tools")
     # Threads are pthreads (SharedArrayBuffer), and the runtime ends a game thread by throwing. -msimd128 is wasm
     # SIMD and -mtail-call wasm's tail calls, which every browser with WebGPU has. N64Recomp writes a jump to another
-    # function as a call and a return, which clang makes a jump natively; in wasm it stays a call unless N64Recomp-web's
+    # function as a call and a return, which clang makes a jump natively; in wasm it stays a call unless N64Recomp-browser's
     # RECOMP_TAIL_CALL makes it a return_call, which takes -mtail-call. Without it a chain of them grows the browser's
     # stack until the thread dies ("Maximum call stack size exceeded", leaving the bar after the intro).
     add_compile_options(-pthread -fwasm-exceptions -msimd128 -mtail-call)
@@ -95,7 +99,7 @@ else()
         -Wno-unused-but-set-variable
         -fno-strict-aliasing
     )
-    # WebAssembly turns a call to an undeclared function into a trap, so it is an error there; N64Recomp-web's funcs.h
+    # WebAssembly turns a call to an undeclared function into a trap, so it is an error there; N64Recomp-browser's
     # declares everything the recompiled code calls.
     if (EMSCRIPTEN)
         target_compile_options(RecompiledFuncs PRIVATE -Werror=implicit-function-declaration)

@@ -1,15 +1,15 @@
 [submodule "tools/N64Recomp"]
 	path = tools/N64Recomp
-	url = https://github.com/amazingalek/N64Recomp-web
+	url = https://github.com/N64Recomp/N64Recomp.git
 [submodule "tools/N64ModernRuntime"]
 	path = tools/N64ModernRuntime
-	url = https://github.com/amazingalek/N64ModernRuntime-web
+	url = https://github.com/N64Recomp/N64ModernRuntime.git
 [submodule "tools/rt64"]
 	path = tools/rt64
-	url = https://github.com/amazingalek/rt64-web
+	url = https://github.com/rt64/rt64.git
 [submodule "tools/RecompFrontend"]
 	path = tools/RecompFrontend
-	url = https://github.com/amazingalek/RecompFrontend-web
+	url = https://github.com/N64Recomp/RecompFrontend.git
 [submodule "tools/m2c"]
 	path = tools/m2c
 	url = https://github.com/matt-kempster/m2c.git

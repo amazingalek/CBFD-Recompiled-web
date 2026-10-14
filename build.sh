@@ -144,6 +144,8 @@ for tool in tools/N64Recomp tools/N64ModernRuntime tools/rt64 tools/RecompFronte
         want=$(git ls-tree HEAD "$tool" | awk '{print $3}')
         if [ "$want" != "$(git -C "$tool" rev-parse HEAD)" ]; then
             echo "  $tool moved to another commit: resetting it (its patch is applied again below)."
+            # Its submodules too: the web support patches rt64's plume and hlslpp.
+            git -C "$tool" submodule foreach --recursive -q 'git reset -q --hard && git clean -fdq'
             git -C "$tool" reset --hard -q
             git -C "$tool" clean -fdq
         fi
@@ -178,16 +180,45 @@ apply_patch() {
     git -C "$tool" apply "$ROOT/$patch" || fail "couldn't apply $patch to $tool."
     echo "  patched $tool"
 }
-step "Patching the tools"
-apply_patch tools/N64Recomp recomp/n64recomp.patch
-apply_patch tools/N64ModernRuntime recomp/n64modernruntime.patch
-apply_patch tools/rt64 recomp/rt64.patch
-# RecompFrontend: mouse buttons can be bound (with the keyboard's controls).
-apply_patch tools/RecompFrontend recomp/recompfrontend.patch
-# RmlUi's fix for GCC 15 and later (RmlUi #766), which isn't in the RmlUi that RecompFrontend
-# uses: its robin_hood.h uses uint64_t without including <cstdint>. Unneeded, and skipped as
-# already applied, once RecompFrontend uses RmlUi 6.2 or later.
-apply_patch "$RMLUI" recomp/rmlui.patch
+# What the tools hold once patched: the patches, and each tool's commit and changes (its
+# submodules' too).
+patched_state() {
+    {
+        cat recomp/*.patch tools/N64Recomp-browser/patches/*.patch
+        for tool in tools/N64Recomp tools/N64ModernRuntime tools/rt64 tools/RecompFrontend; do
+            git -C "$tool" rev-parse HEAD
+            git -C "$tool" diff HEAD
+            git -C "$tool" submodule foreach --recursive -q 'git rev-parse HEAD; git diff HEAD'
+        done
+    } | git hash-object --stdin
+}
+# N64Recomp-browser's web support goes on top of the patches here, and changes some of the
+# same lines, so once it's in apply_patch can't always tell that a patch is: the tools are
+# patched from scratch whenever they aren't as this left them.
+PATCHED=$(git rev-parse --git-dir)/patched-tools
+if [ "$(cat "$PATCHED" 2>/dev/null)" != "$(patched_state)" ]; then
+    step "Patching the tools"
+    for tool in tools/N64Recomp tools/N64ModernRuntime tools/rt64 tools/RecompFrontend; do
+        git -C "$tool" submodule foreach --recursive -q 'git reset -q --hard && git clean -fdq'
+        git -C "$tool" reset -q --hard
+        git -C "$tool" clean -fdq
+    done
+    apply_patch tools/N64Recomp recomp/n64recomp.patch
+    apply_patch tools/N64ModernRuntime recomp/n64modernruntime.patch
+    apply_patch tools/rt64 recomp/rt64.patch
+    # RecompFrontend: mouse buttons can be bound (with the keyboard's controls).
+    apply_patch tools/RecompFrontend recomp/recompfrontend.patch
+    # RmlUi's fix for GCC 15 and later (RmlUi #766), which isn't in the RmlUi that RecompFrontend
+    # uses: its robin_hood.h uses uint64_t without including <cstdint>. Unneeded, and skipped as
+    # already applied, once RecompFrontend uses RmlUi 6.2 or later.
+    apply_patch "$RMLUI" recomp/rmlui.patch
+    # The web support (README.md, "The web page"), behind __EMSCRIPTEN__ or __wasm__, so the
+    # game builds as before natively. N64Recomp's src/analysis.cpp is left out: its change finds
+    # a jump table in another section, which recomp/n64recomp.patch already does its own way.
+    cmake -P tools/N64Recomp-browser/patches/apply.cmake tools
+    cmake -P tools/N64Recomp-browser/patches/apply.cmake N64Recomp tools/N64Recomp src/analysis.cpp
+    patched_state > "$PATCHED"
+fi
 
 step "Building the recompiler"
 if [ ! -f tools/N64Recomp/build/build.ninja ]; then

@@ -217,8 +217,7 @@ extern "C" void recomp_entrypoint(uint8_t* rdram, recomp_context* ctx);
 RspExitReason conker_audio_ucode(uint8_t* rdram, uint32_t ucode_addr);
 
 namespace {
-    // Not const: the web forks' runtime takes it by non-const reference (select_rom, is_rom_valid).
-    std::u8string game_id = u8"conker.n64.us.1.0";
+    const std::u8string game_id = u8"conker.n64.us.1.0";
 
     std::atomic<uint32_t> vi_count{0};
 
@@ -275,15 +274,8 @@ namespace {
         return ultramodern::renderer::WindowHandle{};
     }
 
-    // A test run starts the game as the launcher's Start would, with no game mode (the
-    // forks' runtime has no --game on the command line, as upstream's has). It does so on
-    // the first VI, once the runtime's threads are up.
-    bool start_directly = false;
-
     void vi_callback() {
-        if (++vi_count == 1 && start_directly) {
-            recomp::start_game(game_id, {});
-        }
+        ++vi_count;
 #if defined(CONKER_RT64)
         if (!headless) {
             conker::frontend::on_vi();
@@ -452,7 +444,7 @@ int main(int argc, char** argv) {
     }
     std::filesystem::create_directories(recomp::get_config_path());
     // --seconds (test runs) starts the game directly instead of opening the launcher.
-    start_directly = headless || seconds > 0;
+    bool start_directly = headless || seconds > 0;
 
     recomp::GameEntry game{};
     game.rom_hash = conker::roms::us_rom_hash;
@@ -487,7 +479,17 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    // librecomp starts a game named on the command line with --game; otherwise the
+    // launcher does.
+    std::vector<char*> runtime_argv{ argv[0] };
+    if (start_directly) {
+        runtime_argv.push_back((char*)"--game");
+        runtime_argv.push_back((char*)"conker");
+    }
+
     recomp::Configuration cfg{};
+    cfg.argc = (int)runtime_argv.size();
+    cfg.argv = runtime_argv.data();
     cfg.project_version = recomp::Version{ 0, 1, 5 };
     cfg.rsp_callbacks.get_rsp_microcode = get_rsp_microcode;
     cfg.audio_callbacks = { queue_samples, get_frames_remaining, set_frequency };

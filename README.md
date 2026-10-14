@@ -188,13 +188,16 @@ changed.
 ## The web page
 
 This fork's `main` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
-draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are the web
-forks at the commits [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)'s `forks.txt` names (with
-this game's patches in `recomp/` on top), and `tools/N64Recomp-browser` makes the game a page. Mods are
-off on the page: the runtime can't recompile a mod's code there.
+draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are
+upstream's own submodules at upstream's commits, and [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)
+(`tools/N64Recomp-browser`) adds the web support: `build.sh` applies its `patches/` on top of this game's patches in
+`recomp/` (all of it behind `__EMSCRIPTEN__` or `__wasm__`, so the native game builds as before), and it makes the game a
+page. Its patch to N64Recomp goes in without `src/analysis.cpp`, whose change, finding a jump table in another
+section, `recomp/n64recomp.patch` already makes its own way. Mods are off on the page: the runtime can't recompile a
+mod's code there.
 
-Build and recompile natively first (`build.cmd` or `build.sh` with your ROM: the generated code is the same for both
-builds). Then, with the Emscripten SDK installed and activated and [naga](https://github.com/gfx-rs/wgpu/tree/trunk/naga)
+Build and recompile with `build.sh` first (Linux, macOS, or WSL on Windows), with your ROM: the page needs the code
+the patched N64Recomp writes, and `build.cmd` doesn't apply N64Recomp-browser's patches. Then, with the Emscripten SDK installed and activated and [naga](https://github.com/gfx-rs/wgpu/tree/trunk/naga)
 installed (`cargo install naga-cli`):
 
 ```sh
@@ -247,7 +250,7 @@ copy a list late               30     10.7-11.8 ms
 The code leaves a function by jumping to another one, which the recompiled C writes as a call and a return. Natively
 the compiler makes that a jump again; in WebAssembly it stays a call unless it is a wasm tail call, so the game's
 chains of them grew the browser's stack until the page stopped ("Maximum call stack size exceeded", leaving the bar
-after the intro). The page is built with `-mtail-call`, and N64Recomp-web writes each one as a forced tail call then.
+after the intro). The page is built with `-mtail-call`, and N64Recomp-browser's patch to N64Recomp writes each one as a forced tail call then.
 Sound plays through N64Recomp-browser's AudioWorklet output on the browser's audio thread, resampled to its rate
 (`host/src/audio_output.cpp`): SDL2's port plays from the page's thread, where WebGPU's work runs.
 
@@ -277,7 +280,8 @@ since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
 
 1. Checks your ROM (copied to `conker/baserom.us.z64`) and applies the patches in
-   `recomp/` to N64Recomp, N64ModernRuntime and RT64.
+   `recomp/` to N64Recomp, N64ModernRuntime, RT64 and RecompFrontend, and then (in
+   `build.sh`) N64Recomp-browser's web support on top ([The web page](#the-web-page)).
 2. Builds N64Recomp.
 3. Runs `recomp/recompile.py`, which unpacks the game's code from your ROM and
    recompiles it into `RecompiledFuncs/`. Which functions there are, and where,

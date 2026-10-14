@@ -1,8 +1,8 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index e55787f..83114fd 100644
+index 79dfc38..237a00d 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
-@@ -400,6 +400,7 @@ set (SOURCES
+@@ -327,6 +327,7 @@ set (SOURCES
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3d.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dex2.cpp"
@@ -10,7 +10,7 @@ index e55787f..83114fd 100644
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dgolden.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dpd.cpp"
      "${PROJECT_SOURCE_DIR}/src/gbi/rt64_gbi_f3dwave.cpp"
-@@ -432,6 +433,7 @@ set (SOURCES
+@@ -359,6 +360,7 @@ set (SOURCES
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_projection.cpp"
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_rdp.cpp"
      "${PROJECT_SOURCE_DIR}/src/hle/rt64_rdp_tmem.cpp"
@@ -33,7 +33,7 @@ index d387090..75ab87d 100644
  #define G_EX_VERTEX_POSITION        0x0
  #define G_EX_VERTEX_VELOCITY        0x1
 diff --git a/src/common/rt64_common.h b/src/common/rt64_common.h
-index f79adbf..e40a61d 100644
+index f79adbf..6e0a6f9 100644
 --- a/src/common/rt64_common.h
 +++ b/src/common/rt64_common.h
 @@ -70,6 +70,18 @@ namespace RT64 {
@@ -141,6 +141,20 @@ index 0000000..c9dd621
 +
 +#define RT64_FBLOG_RECT(r) (r).ulx, (r).uly, (r).lrx, (r).lry
 +#define RT64_FBLOG_RECT_FMT "(%d,%d)-(%d,%d)"
+diff --git a/src/common/rt64_hlslpp.h b/src/common/rt64_hlslpp.h
+index 1450565..032ed28 100644
+--- a/src/common/rt64_hlslpp.h
++++ b/src/common/rt64_hlslpp.h
+@@ -10,4 +10,8 @@
+ #define HLSLPP_SCALAR
+ #endif
+ 
++// The scalar implementation uses labs() without including <stdlib.h>, which recent
++// macOS SDKs no longer bring in through <math.h>.
++#include <stdlib.h>
++
+ #include "hlsl++.h"
+\ No newline at end of file
 diff --git a/src/common/rt64_replacement_database.cpp b/src/common/rt64_replacement_database.cpp
 index 9f331c9..1d3f107 100644
 --- a/src/common/rt64_replacement_database.cpp
@@ -424,21 +438,21 @@ index 0000000..99ef5c2
 +    };
 +};
 diff --git a/src/hle/rt64_application.cpp b/src/hle/rt64_application.cpp
-index 2f124c1..d95549b 100644
+index ee8bc1f..428208c 100644
 --- a/src/hle/rt64_application.cpp
 +++ b/src/hle/rt64_application.cpp
-@@ -257,6 +257,11 @@ namespace RT64 {
-                 if (deviceDescription.driverVersion <= BrokenAMDDriverD3D12) {
-                     forceVulkanForCompatibility = true;
-                 }
-+                else if (device->getCapabilities().uma) {
-+                    // Integrated AMD graphics (sharing system memory) crashed at start in D3D12: a Ryzen 5 5560U (Vega) failed to create
-+                    // its render targets and upload buffers, and nothing got drawn. Vulkan runs on the same machine, so it's the automatic choice here.
-+                    forceVulkanForCompatibility = true;
-+                }
-                 else if (automaticGraphicsAPI) {
-                     // Wireframe artifacts have been reported when using a high-precision color format on RDNA3 GPUs in D3D12. The workaround is to switch to Vulkan if this is the case.
-                     bool isRX7 = deviceDescription.name.find("AMD Radeon RX 7") != std::string::npos;
+@@ -245,6 +245,11 @@ namespace RT64 {
+                         // We don't know yet what driver will fix the issue for RDNA4, so if it's newer than BrokenRDNA4DriverD3D12, we only force Vulkan if it's in Automatic mode.
+                         forceVulkanForCompatibility = true;
+                     }
++                    else if (device->getCapabilities().uma) {
++                        // Integrated AMD graphics (sharing system memory) crashed at start in D3D12: a Ryzen 5 5560U (Vega) failed to create
++                        // its render targets and upload buffers, and nothing got drawn. Vulkan runs on the same machine, so it's the automatic choice here.
++                        forceVulkanForCompatibility = true;
++                    }
+                     else {
+                         // Wireframe artifacts have been reported when using a high-precision color format on RDNA3 GPUs in D3D12. The workaround is to switch to Vulkan if this is the case.
+                         const bool isRX7 = deviceDescription.name.find("AMD Radeon RX 7") != std::string::npos;
 diff --git a/src/hle/rt64_framebuffer_manager.cpp b/src/hle/rt64_framebuffer_manager.cpp
 index d7caa12..60112aa 100644
 --- a/src/hle/rt64_framebuffer_manager.cpp
@@ -748,7 +762,7 @@ index 87392d0..db00961 100644
              const std::vector<float> &prevTcFloats = prevWorkload.drawData.tcFloats;
              std::vector<float> &curVelFloats = curWorkload.drawData.tcVelFloats;
 diff --git a/src/hle/rt64_present_queue.cpp b/src/hle/rt64_present_queue.cpp
-index 3227ab1..74d4e37 100644
+index 7de5b69..2ef2ef5 100644
 --- a/src/hle/rt64_present_queue.cpp
 +++ b/src/hle/rt64_present_queue.cpp
 @@ -9,7 +9,16 @@
@@ -768,7 +782,7 @@ index 3227ab1..74d4e37 100644
      // PresentQueue
  
      PresentQueue::PresentQueue() {
-@@ -401,6 +410,7 @@ namespace RT64 {
+@@ -402,6 +411,7 @@ namespace RT64 {
                  RenderCommandSemaphore *waitSemaphore = drawSemaphores[swapChainIndex].get();
                  presentTimestamp = Timer::current();
                  swapChainValid = ext.swapChain->present(swapChainIndex, &waitSemaphore, 1);
@@ -1594,7 +1608,7 @@ index 61bb3b1..782ed13 100644
          void setVertexSegmentV1(bool isEnabled, uint32_t vertexElement, uint32_t vertexAddress, uint32_t baseSegmentAddress);
          template<uint32_t floatCount, uint32_t vertexSize>
 diff --git a/src/hle/rt64_state.cpp b/src/hle/rt64_state.cpp
-index 9a8b286..a3dfcf1 100644
+index 2970e71..34210a0 100644
 --- a/src/hle/rt64_state.cpp
 +++ b/src/hle/rt64_state.cpp
 @@ -4,6 +4,8 @@
@@ -1603,10 +1617,10 @@ index 9a8b286..a3dfcf1 100644
  
 +#include "common/rt64_fblog.h"
 +
- #include <algorithm>
  #include <cassert>
  #include <cinttypes>
-@@ -542,6 +544,27 @@ namespace RT64 {
+ 
+@@ -540,6 +542,27 @@ namespace RT64 {
          FramebufferPair &fbPair = workload.fbPairs[fbPairIndex];
          fbPair.flushReason = flushReason;
  
@@ -1634,7 +1648,7 @@ index 9a8b286..a3dfcf1 100644
          // Add all the pending framebuffer operations to the first one that was found.
          flushFramebufferOperations(fbPair);
  
-@@ -553,6 +576,10 @@ namespace RT64 {
+@@ -551,6 +574,10 @@ namespace RT64 {
              uint32_t depthWriteWidth = 0;
              RT64::Framebuffer *colorFb = &framebufferManager.get(colorImg.address, colorImg.siz, colorImg.width, colorHeight);
              colorImg.formatChanged = colorFb->widthChanged || colorFb->sizChanged || colorFb->rdramChanged;
@@ -1645,7 +1659,7 @@ index 9a8b286..a3dfcf1 100644
              colorFb->clearChanged();
              colorFb->addDitherPatterns(fbPair.ditherPatterns);
  
-@@ -564,6 +591,11 @@ namespace RT64 {
+@@ -562,6 +589,11 @@ namespace RT64 {
  
                  depthFb = &framebufferManager.get(depthImg.address, G_IM_SIZ_16b, colorImg.width, colorHeight);
                  depthImg.formatChanged = depthFb->widthChanged || depthFb->sizChanged || depthFb->rdramChanged;
@@ -1657,7 +1671,7 @@ index 9a8b286..a3dfcf1 100644
                  depthFb->clearChanged();
  
                  // Detect a fast path by checking if the framebuffer pair previous to the current one only did fill rects.
-@@ -606,6 +638,10 @@ namespace RT64 {
+@@ -604,6 +636,10 @@ namespace RT64 {
              }
          }
  
@@ -1668,7 +1682,7 @@ index 9a8b286..a3dfcf1 100644
          // Store the process Id this framebuffer pair was submitted under.
          fbPair.displayListAddress = displayListAddress;
          fbPair.displayListCounter = displayListCounter;
-@@ -634,6 +670,16 @@ namespace RT64 {
+@@ -630,6 +666,16 @@ namespace RT64 {
          {
              framebufferManager.storeRAM(workload.fbStorage, RDRAM, fbPairIndex);
              framebufferManager.checkRAM(RDRAM, differentFbs, true);
@@ -1686,7 +1700,7 @@ index 9a8b286..a3dfcf1 100644
                  RenderWorkerExecution execution(ext.framebufferGraphicsWorker);
                  framebufferManager.uploadRAM(ext.framebufferGraphicsWorker, differentFbs.data(), differentFbs.size(), workload.fbChangePool, RDRAM, true, drawFbOperations, drawFbDiscards, ext.shaderLibrary);
 diff --git a/src/hle/rt64_workload_queue.cpp b/src/hle/rt64_workload_queue.cpp
-index 071a8de..77743e2 100644
+index 5a331aa..3d4fca2 100644
 --- a/src/hle/rt64_workload_queue.cpp
 +++ b/src/hle/rt64_workload_queue.cpp
 @@ -4,6 +4,8 @@
@@ -1698,7 +1712,7 @@ index 071a8de..77743e2 100644
  #include "common/rt64_thread.h"
  
  #include "rt64_present_queue.h"
-@@ -453,6 +455,15 @@ namespace RT64 {
+@@ -449,6 +451,15 @@ namespace RT64 {
                          colorFb = &fbManager.get(colorImg.address, colorImg.siz, nativeColorWidth, nativeColorHeight);
                      }
  
@@ -1714,7 +1728,7 @@ index 071a8de..77743e2 100644
                      if (colorFb != nullptr) {
                          fbKey.colorTargetKey = RenderTargetKey(colorFb->addressStart, colorFb->width, colorFb->siz, Framebuffer::Type::Color);
                          colorTarget = &targetManager.get(fbKey.colorTargetKey);
-@@ -512,6 +523,16 @@ namespace RT64 {
+@@ -508,6 +519,16 @@ namespace RT64 {
              colorDepthPairs.clear();
  
              const uint32_t fbPairCount = (debuggerRenderer.framebufferIndex >= 0) ? (debuggerRenderer.framebufferIndex + 1) : workload.fbPairCount;
@@ -1731,7 +1745,7 @@ index 071a8de..77743e2 100644
              for (uint32_t f = 0; f < fbPairCount; f++) {
                  const FramebufferPair &fbPair = workload.fbPairs[f];
  #           if RT_ENABLED
-@@ -542,9 +563,19 @@ namespace RT64 {
+@@ -538,9 +559,19 @@ namespace RT64 {
                          depthFb->nativeTarget.resetBufferHistory();
                      }
  
@@ -1751,7 +1765,7 @@ index 071a8de..77743e2 100644
                      }
  
                      // Set up the dummy target used for rendering the depth if no depth framebuffer is active.
-@@ -570,6 +601,9 @@ namespace RT64 {
+@@ -566,6 +597,9 @@ namespace RT64 {
                          if (depthTarget->resize(ext.workloadGraphicsWorker, rtWidth, rtHeight)) {
                              resizedTargets.emplace(depthTarget);
                              depthFb->readHeight = 0;
@@ -1761,7 +1775,7 @@ index 071a8de..77743e2 100644
                          }
                      }
                  }
-@@ -581,6 +615,10 @@ namespace RT64 {
+@@ -577,6 +611,10 @@ namespace RT64 {
              // Make sure all depth targets are at least bigger than their corresponding color targets.
              for (auto colorDepthPair : colorDepthPairs) {
                  if (colorDepthPair.second->resize(ext.workloadGraphicsWorker, colorDepthPair.first->width, colorDepthPair.first->height)) {
@@ -1772,7 +1786,7 @@ index 071a8de..77743e2 100644
                      resizedTargets.emplace(colorDepthPair.second);
                  }
              }
-@@ -717,6 +755,12 @@ namespace RT64 {
+@@ -709,6 +747,12 @@ namespace RT64 {
              for (uint32_t f = 0; f < fbPairCount; f++) {
                  const FramebufferPair &fbPair = workload.fbPairs[f];
                  bool validTargets = getTargetsFromPair(f);
@@ -1785,7 +1799,7 @@ index 071a8de..77743e2 100644
                  fbManager.recordOperations(ext.workloadGraphicsWorker, &workload.fbChangePool, &workload.fbStorage, ext.shaderLibrary, ext.textureCache,
                      fbPair.startFbOperations, targetManager, fixedResScale, f, workload.submissionFrame);
  
-@@ -746,6 +790,11 @@ namespace RT64 {
+@@ -738,6 +782,11 @@ namespace RT64 {
  
                          if (colorFb->height > colorFb->readHeight) {
                              uint32_t readRowCount = colorFb->height - colorFb->readHeight;
@@ -1797,7 +1811,7 @@ index 071a8de..77743e2 100644
                              FramebufferChange *colorFbChange = colorFb->readChangeFromStorage(ext.workloadGraphicsWorker, workload.fbStorage, scratchFbChangePool,
                                  Framebuffer::Type::Color, colorImg.fmt, f, colorFb->readHeight, readRowCount, ext.shaderLibrary);
  
-@@ -764,10 +813,20 @@ namespace RT64 {
+@@ -756,10 +805,20 @@ namespace RT64 {
                          depthFbTypeChanged = (depthFb->lastWriteType == Framebuffer::Type::Color);
  
                          bool imgFormatChanged = (colorFb == nullptr) ? colorImg.formatChanged : depthImg.formatChanged;
@@ -1818,7 +1832,7 @@ index 071a8de..77743e2 100644
                              RenderTargetKey otherDepthTargetKey(depthFb->addressStart, depthFb->width, depthFb->siz, depthFb->lastWriteType);
                              RenderTarget &otherDepthTarget = targetManager.get(otherDepthTargetKey);
                              if (!otherDepthTarget.isEmpty()) {
-@@ -785,6 +844,10 @@ namespace RT64 {
+@@ -777,6 +836,10 @@ namespace RT64 {
  
                          if (depthFb->height > depthFb->readHeight) {
                              uint32_t readRowCount = depthFb->height - depthFb->readHeight;
@@ -1830,7 +1844,7 @@ index 071a8de..77743e2 100644
                                  G_IM_FMT_DEPTH, f, depthFb->readHeight, readRowCount, ext.shaderLibrary);
  
 diff --git a/src/render/rt64_framebuffer_renderer.cpp b/src/render/rt64_framebuffer_renderer.cpp
-index 2747dca..4e19970 100644
+index 9fae0d4..8cac619 100644
 --- a/src/render/rt64_framebuffer_renderer.cpp
 +++ b/src/render/rt64_framebuffer_renderer.cpp
 @@ -7,6 +7,7 @@
@@ -1841,7 +1855,7 @@ index 2747dca..4e19970 100644
  #include "common/rt64_math.h"
  #include "hle/rt64_color_converter.h"
  #include "gbi/rt64_f3d.h"
-@@ -1471,6 +1472,16 @@ namespace RT64 {
+@@ -1435,6 +1436,16 @@ namespace RT64 {
          const float scissorRatio = static_cast<float>(fbPair.scissorRect.width(false, true)) / static_cast<float>(fbPair.scissorRect.height(false, true));
          const bool adjustRatio = (abs((scissorRatio / p.aspectRatioSource) - 1.0f) < SimilarityPercentage);
          const float aspectRatioScale = adjustRatio ? (p.aspectRatioTarget / p.aspectRatioSource) : 1.0f;
@@ -1858,7 +1872,7 @@ index 2747dca..4e19970 100644
          InstanceDrawCall instanceDrawCall;
          interop::RenderIndices renderIndices;
          uint32_t globalCallIndex = 0;
-@@ -1524,9 +1535,17 @@ namespace RT64 {
+@@ -1488,9 +1499,17 @@ namespace RT64 {
                  // The call's scissor spans the whole width of the framebuffer pair scissor. Custom origin must not be in use to be able to use the stretched viewport.
                  const auto &viewport = drawData.rspViewports[proj.transformsIndex];
                  FixedRect intersectionRect = proj.scissorRect.intersection(viewport.rect(viewportClipRatios));
@@ -1877,7 +1891,7 @@ index 2747dca..4e19970 100644
                  if (useWideViewport) {
                      projInvRatioScale = 1.0f;
                  }
-@@ -1661,6 +1680,7 @@ namespace RT64 {
+@@ -1625,6 +1644,7 @@ namespace RT64 {
  
                          float invRatioScale = 1.0f / aspectRatioScale;
                          float horizontalMisalignment = 0.0f;
@@ -1885,7 +1899,7 @@ index 2747dca..4e19970 100644
                          switch (proj.type) {
                          case Projection::Type::Perspective:
                          case Projection::Type::Orthographic: {
-@@ -1681,14 +1701,46 @@ namespace RT64 {
+@@ -1645,14 +1665,46 @@ namespace RT64 {
                              // The call's scissor spans the whole width of the framebuffer pair scissor. The rect must not be using extended origins.
                              const bool regularOrigins = (call.callDesc.rectLeftOrigin == G_EX_ORIGIN_NONE) && (call.callDesc.rectRightOrigin == G_EX_ORIGIN_NONE);
                              const bool coversScissorWidth = regularOrigins && (call.callDesc.rect.ulx <= fbPair.scissorRect.ulx) && (call.callDesc.rect.lrx >= fbPair.scissorRect.lrx);
@@ -1933,7 +1947,7 @@ index 2747dca..4e19970 100644
                              triangles.screenScale = { viewportRect.width / framebuffer.viewport.width, viewportRect.height / framebuffer.viewport.height };
                              triangles.screenOffset.x = halfPixelOffset.x + ((viewportRect.x + viewportRect.width / 2.0f) - halfViewportSize.x) / halfViewportSize.x;
                              triangles.screenOffset.y = halfPixelOffset.y + (halfViewportSize.y - (viewportRect.y + viewportRect.height / 2.0f)) / halfViewportSize.y;
-@@ -1712,7 +1764,12 @@ namespace RT64 {
+@@ -1676,7 +1728,12 @@ namespace RT64 {
                              break;
                          }
  
@@ -1948,7 +1962,7 @@ index 2747dca..4e19970 100644
                          bool usesViewport = (proj.type == Projection::Type::Perspective) || (proj.type == Projection::Type::Orthographic);
                          if (usesViewport) {
 diff --git a/src/render/rt64_projection_processor.cpp b/src/render/rt64_projection_processor.cpp
-index e842dcc..d304ec4 100644
+index e842dcc..c0e4b44 100644
 --- a/src/render/rt64_projection_processor.cpp
 +++ b/src/render/rt64_projection_processor.cpp
 @@ -4,6 +4,7 @@
