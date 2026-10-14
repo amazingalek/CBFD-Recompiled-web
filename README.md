@@ -292,6 +292,14 @@ Windy's checkpoint 33: there it logged "Out of Memory" and lost the device, in t
 v0.28.0 too. On a 3840x2000 canvas, the stand-in for integrated graphics, Chrome never waited and drew 48-55; Firefox
 waited 7.3 s and then drew 57-61.
 
+Played again from the published page (main 6216570, N64Recomp-browser b1c35d1) on 2026-10-14 (RTX 2070, an idle host),
+the same plan's `windy` section from a fresh profile: Firefox 158 waited 5.3 s for the first section and 9.6 s for
+Windy, then drew 60 frames a second through checkpoints 10, 27 and 33 for over 3 minutes, with no WebGPU errors and no
+sound short, in two runs of two. What had lost the device was the bind groups RT64 makes as it rewrites its texture
+sets every frame, 4,000-14,000 a second at checkpoint 33, which a browser frees only when JavaScript collects them;
+plume-web 97f4e64 keeps them by what they bind, and the live ones now stay at about 4,500. Headless Chrome 155 waited
+2 s for 27 shaders and drew 55, with no WebGPU errors.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
