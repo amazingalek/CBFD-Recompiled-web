@@ -298,7 +298,8 @@ Windy, then drew 60 frames a second through checkpoints 10, 27 and 33 for over 3
 sound short, in two runs of two. What had lost the device was the bind groups RT64 makes as it rewrites its texture
 sets every frame, 4,000-14,000 a second at checkpoint 33, which a browser frees only when JavaScript collects them;
 plume-web 97f4e64 keeps them by what they bind, and the live ones now stay at about 4,500. Headless Chrome 155 waited
-2 s for 27 shaders and drew 55, with no WebGPU errors.
+2 s for 27 shaders and drew 55, with no WebGPU errors. On the 3840x2000 stand-in Firefox 158 drew 60 through the same
+section, with no WebGPU errors and no sound short.
 
 ## What the build does
 
