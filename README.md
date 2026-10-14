@@ -304,6 +304,10 @@ plume-web 97f4e64 keeps them by what they bind, and the live ones now stay at ab
 2 s for 27 shaders and drew 55, with no WebGPU errors. On the 3840x2000 stand-in Firefox 158 drew 60 through the same
 section, with no WebGPU errors and no sound short.
 
+On the page built on N64Recomp-browser ed8764a (v0.36.0, main ddcd0d8), 2026-10-14, the same canvas, an idle host,
+one page at a time, 90 s of the plan's boot: Firefox 158 waited 5.1 s and then drew 56-60, 1,432 sound frames short in
+the wait; Chrome 155 never waited and drew 49-56, 1,484 short at the start; no WebGPU errors in either.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
