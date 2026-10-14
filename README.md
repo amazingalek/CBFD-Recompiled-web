@@ -308,6 +308,10 @@ On the page built on N64Recomp-browser ed8764a (v0.36.0, main ddcd0d8), 2026-10-
 one page at a time, 90 s of the plan's boot: Firefox 158 waited 5.1 s and then drew 56-60, 1,432 sound frames short in
 the wait; Chrome 155 never waited and drew 49-56, 1,484 short at the start; no WebGPU errors in either.
 
+Played again from the page built on N64Recomp-browser 2efc795 (rt64-web 9ed449d, main 968c830) on 2026-10-14, on that
+canvas, a quiet host, one page at a time, 25 s after the waits: Firefox 158 waited 5.2 s for the boot's 75 and
+then drew 59-60, Chrome 155 never waited and drew 50-60, rt64's pacing never on, no sound short, no WebGPU errors.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
