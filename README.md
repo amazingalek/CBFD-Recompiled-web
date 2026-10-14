@@ -267,6 +267,11 @@ each multiplayer mode, in headless Chrome, and the list's header says what it co
 Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound; and,
 started by the recording's script, a few seconds of each chapter's places and of seven multiplayer modes.
 
+In Firefox 157 on the RTX 2070 (2026-10-13, a busy host) the first section took 12.4 s and Windy's 14.7 s, and then
+the bar drew 55 frames a second and Windy 57 (headless Chrome 155: 3.1 and 3.8 s, 59 and 59). Firefox refuses a view
+of more than 2 GB of memory as a WebGPU argument, and Conker's heap grows past that, so the page starts there only
+since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the heap.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
