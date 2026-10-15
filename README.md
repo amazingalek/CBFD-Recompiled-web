@@ -326,6 +326,13 @@ checkpoint on an RTX 2070, both browsers drew a background like it, and the game
 plan's last Enter, which unpauses, didn't take. Not smooth in either browser, Firefox at about half Chrome's rate with
 its GPU mostly idle.
 
+Played again from the page built on N64Recomp-browser d3b9031 (N64ModernRuntime-web f0e0884, RecompFrontend-web 75fe596,
+rt64-web f34b19c; main cbe14d9, gh-pages 0fe9426) on 2026-10-15, its files served locally with the cross-origin headers,
+RTX 2070, 1256x645, a fresh profile each, the host's every core busy with other work, the intro and the bar, 40 s, with
+`play_page.mjs`: headless Chrome 155 never waited and drew 57.8 presents a second (median); Firefox 158 waited 10.7 s
+for the boot's 75 and drew about 60 after it, 52 as the median of the whole run with the wait in it. No WebGPU errors or
+exceptions in either.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
