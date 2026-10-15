@@ -184,7 +184,7 @@ apply_patch() {
 # submodules' too).
 patched_state() {
     {
-        cat recomp/*.patch tools/web_patch.sh tools/web_rt64_game_frame.patch tools/N64Recomp-browser/patches/*.patch
+        cat recomp/*.patch tools/web_patch.sh tools/web_*.patch tools/N64Recomp-browser/patches/*.patch
         for tool in tools/N64Recomp tools/N64ModernRuntime tools/rt64 tools/RecompFrontend; do
             git -C "$tool" rev-parse HEAD
             git -C "$tool" diff HEAD

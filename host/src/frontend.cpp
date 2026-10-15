@@ -205,8 +205,11 @@ namespace {
 #endif
         // The mouse camera's scroll wheel zoom (mouse_camera.cpp).
         conker_mouse_camera_init();
-        // Save states' keys, and the runtime's idle moment they're taken at (save_states.cpp).
+        // Save states' keys, and the runtime's idle moment they're taken at (save_states.cpp). Not on a page: the
+        // runtime tells where each thread waits by its native call stack, which wasm can't walk (tools/web_patch.sh).
+#ifndef __EMSCRIPTEN__
         conker::save_states::init();
+#endif
         return nullptr;
     }
 
