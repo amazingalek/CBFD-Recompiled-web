@@ -387,6 +387,11 @@ Firefox 158 57.4 with its waits (6.6 and 7.1 s for the boot, 5.2 s for Zombie Fe
 two), and neither crashed or reported a WebGPU error or exception. The page on Pages before the merge (main d6b8112)
 played the same route in Chrome without a crash too, so the route doesn't reach what crashed: upstream's route that
 halted was the barrel up Windy's water, the money and out to Birdy, and the beehive's crash came after the Queen Bee.
+From Pages (main d389fb3, the same page), cold, the same GPU, a quiet host, 3840x2000, 25 s of the game playing by
+itself: headless Chrome 155 52.6 and 55.6 presents a second in two runs while the shader list built behind the game,
+Firefox 158 60 after a 6.6 s boot wait, no sound short after it; no WebGPU errors or exceptions. On a newer
+N64Recomp-browser (main fbc0514, the shader plan's Windy section, 1256x645) Chrome drew 55 and Firefox 60 after waits
+of 5.9 s for the boot and 7.9 s for Windy, with none either.
 
 ## What the build does
 
