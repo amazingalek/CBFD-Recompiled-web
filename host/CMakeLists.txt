@@ -26,9 +26,11 @@ set(CMAKE_C_STANDARD 11)
 
 if (EMSCRIPTEN)
     # tools/rt64, tools/N64ModernRuntime and tools/RecompFrontend with N64Recomp-browser's web support patched in on
-    # top of recomp/'s patches, if build.sh hasn't already (README.md, "The web page").
-    include("${CMAKE_CURRENT_SOURCE_DIR}/../tools/N64Recomp-browser/patches/apply.cmake")
-    n64recomp_browser_apply_patches("${CMAKE_CURRENT_SOURCE_DIR}/../tools")
+    # top of recomp/'s patches, if build.sh hasn't already (README.md, "The web page"; tools/web_patch.sh).
+    execute_process(COMMAND sh "${CMAKE_CURRENT_SOURCE_DIR}/../tools/web_patch.sh" RESULT_VARIABLE web_patch_result)
+    if (NOT web_patch_result EQUAL 0)
+        message(FATAL_ERROR "tools/web_patch.sh failed")
+    endif()
     # Threads are pthreads (SharedArrayBuffer), and the runtime ends a game thread by throwing. -msimd128 is wasm
     # SIMD and -mtail-call wasm's tail calls, which every browser with WebGPU has. N64Recomp writes a jump to another
     # function as a call and a return, which clang makes a jump natively; in wasm it stays a call unless N64Recomp-browser's
