@@ -18,12 +18,14 @@ APPLY=tools/N64Recomp-browser/patches/apply.cmake
 web_apply() {
     git -C "$1" apply --reverse --check "$PWD/$2" 2>/dev/null || git -C "$1" apply "$PWD/$2"
 }
-cmake -P $APPLY rt64 tools/rt64 src/hle/rt64_game_frame.h
+# Before rt64's patch: apply.cmake knows a checkout it patched with a three-way merge by its changes, so nothing
+# may change it after.
 web_apply tools/rt64 tools/web_rt64_game_frame.patch
+cmake -P $APPLY rt64 tools/rt64 src/hle/rt64_game_frame.h
 cmake -P $APPLY plume tools/rt64/src/contrib/plume
 cmake -P $APPLY hlslpp tools/rt64/src/contrib/hlslpp
-cmake -P $APPLY N64ModernRuntime tools/N64ModernRuntime
 web_apply tools/N64ModernRuntime tools/web_save_states.patch
+cmake -P $APPLY N64ModernRuntime tools/N64ModernRuntime
 cmake -P $APPLY N64Recomp tools/N64ModernRuntime/N64Recomp
 cmake -P $APPLY RecompFrontend tools/RecompFrontend
 cmake -P $APPLY N64Recomp tools/N64Recomp src/analysis.cpp
