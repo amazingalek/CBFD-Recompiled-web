@@ -90,12 +90,9 @@ namespace conker {
 
     // pad_mappings.cpp: C-buttons SDL maps as face buttons made the right stick (issue #28).
     namespace pad_mappings {
-        // Rewrites the mapping of each such controller connected.
+        // Rewrites the mapping of each such controller connected. From the main thread only: at start,
+        // and from SDL's event watch as a controller connects (it lists SDL's devices, issue #88).
         void fix_all();
-        // From SDL's event watch: a controller was connected (fixed at the next update).
-        void on_device_added();
-        // Every VI: fixes the controllers connected since the last one.
-        void update();
     }
 
     // texture_packs.cpp: RT64 texture packs (issue #63).
@@ -111,9 +108,9 @@ namespace conker {
         void update_unpacking();
         // gliden64_packs.cpp: the mod id of the pack a .htc unpacks into.
         std::string gliden64_pack_id(const std::filesystem::path& htc);
-        // The Texture Packs settings tab, listing the packs in the mods folder (a .htc as the pack it
-        // unpacks into).
-        void add_tab();
+        // The Texture Pack setting, at the end of the Graphics tab, listing the packs in the mods
+        // folder (a .htc as the pack it unpacks into).
+        void add_options(recomp::config::Config& config);
         // Turns on the pack chosen in the settings and the others off (unless it's left to the
         // Mods menu). Needs the runtime to have opened the mods.
         void apply();
@@ -134,8 +131,10 @@ namespace conker {
 
     // look_aim.cpp: gyro and mouse in the look mode (hold R), and how each input moves the view.
     namespace look_aim {
-        // Its settings, on the General tab.
-        void add_options(recomp::config::Config& config);
+        // Its settings: the camera's and the stick's aiming on the Camera tab, the mouse's and
+        // gyro's on the Mouse & Gyro tab.
+        void add_camera_options(recomp::config::Config& config);
+        void add_mouse_gyro_options(recomp::config::Config& config);
         // Called on every input poll: queues its mouse and gyro movement for the look mode.
         void on_input_poll();
         // The Mouse: Turn the Camera setting: whether the mouse turns the third-person camera
@@ -144,12 +143,95 @@ namespace conker {
         // The Right Stick: Free Camera setting (issue #65), in single player: whether the right stick
         // turns the third-person camera (mouse_camera.cpp) instead of pressing the C-buttons.
         bool stick_free_camera();
+        // Aiming: Swap Sticks (issue #84): whether a player (0 to 3) is aiming now (either aiming mode
+        // ran for their camera in the last few frames) with the setting on, so their controller's sticks
+        // are swapped (frontend.cpp): the right stick aims and the left moves. Not with recompinput's own
+        // multiplayer mode (players assigned in its menus), which maps each controller itself.
+        bool swap_sticks_now(int player = 0);
+        // Whether the player's character is aiming the shotgun (state 0x3B), where Z (the laser sight) makes
+        // C-Left and C-Right turn the aim: the swapped left stick leaves them out while Z is held (frontend.cpp).
+        bool z_turns_aim(int player);
+        // The bank's slow motion leaps (issue #85): from the game thread as a frame starts, whether
+        // player 1's Conker is leaping; whether he was, from any thread; and, from the input thread,
+        // the mouse's tilt added to player 1's stick while he is (the mouse moves the crosshair).
+        void leap_frame(uint8_t* rdram);
+        bool leaping_now();
+        void leap_stick(float& x, float& y);
         // Camera: Invert Turning, for the free camera's stick: turning (x) and tilting (y).
         void free_camera_invert(bool& x, bool& y);
         // Camera: Turning Speed, 1 at 100%.
         float camera_turn_speed();
         // Camera: Field of View: the normal camera's vertical field of view, degrees.
         float camera_field_of_view();
+    }
+
+    // conker_config.cpp: whether the Graphics tab's settings exist (not with --headless, which makes
+    // no menus). Their readers fall back to the defaults without them.
+    bool graphics_config_ready();
+
+    // Graphics: Overscan Borders (conker_config.cpp; the crop is set in widescreen.cpp).
+    namespace overscan_borders {
+        // Hidden: the picture is zoomed so the game's black border at its sides is off the screen.
+        bool hidden();
+    }
+
+    // Graphics: Conker's Detail (conker_config.cpp; the model is picked in model_detail.cpp).
+    namespace model_detail {
+        // Always Highest: Conker stays on his most detailed model in single player.
+        bool always_highest();
+    }
+
+    // interpolation.cpp: shadows aren't drawn on their first game frame back after a gap (issue #75).
+    namespace shadows {
+        // From the game thread, as the game starts a frame's display list.
+        void game_frame();
+    }
+
+    // reticle.cpp: Aiming: Reticle, a ring in the middle of the screen while aiming (issue #74).
+    namespace reticle {
+        // look_aim.cpp: whether the setting is on.
+        bool enabled();
+        // From the game thread, each frame a camera aims in the second aiming mode (conker_aim_stick,
+        // $s0 the camera state): player 1's shows the reticle, unless zoomed in or in split screen.
+        void aim_frame(uint8_t* rdram, gpr camera);
+        // The same each frame of the look mode (conker_look_targets), with its state: only the
+        // slingshot's and the throwing knives' show the reticle, not plain R-Look's.
+        void look_frame(uint8_t* rdram, gpr camera, uint32_t state);
+        // From the launcher's init (frontend.cpp): recompui's UI exists now, so the reticle can be made.
+        void on_ui_ready();
+        // On the main thread (update_gfx): shows or hides the reticle.
+        void update();
+    }
+
+    // local_achievements.cpp: the program's own achievements, for reaching the game's scenes, kept on this computer.
+    namespace local_achievements {
+        // At start (frontend.cpp, once the config folder is known): reads the unlocks so far.
+        void init();
+        // With the other settings tabs (conker_config.cpp): the Achievements tab.
+        void add_tab();
+        // From the game thread, as the game starts a frame's display list: unlocks what the save has reached.
+        void game_frame(uint8_t* rdram);
+        // Save states (save_states.cpp), as one is loaded: the scenes it has are put back with the game's memory,
+        // so they count for nothing, as a save's do.
+        void state_loaded();
+    }
+
+    // notices.cpp: a line in the top-left corner for a few seconds, one at a time (an unlock, a save state's
+    // "State saved"...).
+    namespace notices {
+        // From any thread. With replace, it's shown at once in place of what's shown (and of an earlier one to
+        // replace), as a save state's slot is as F6 is pressed again and again.
+        void show(const std::string& text, bool replace = false);
+        // From the launcher's init (frontend.cpp): recompui's UI exists now, so the line's context can be made.
+        void on_ui_ready();
+        // On the main thread (update_gfx): shows the waiting lines, one at a time, once the game has started.
+        void update();
+    }
+
+    // save_states.cpp: save states (issue #94), F5 to save, F7 to load, F6 for the next slot.
+    namespace save_states {
+        // At start (frontend.cpp): the keys, and the runtime's idle moment that states are taken at.
+        void init();
     }
 
     // fps_counter.cpp: Show FPS, the frame rate counter.

@@ -119,6 +119,7 @@ add_executable(ConkerRecomp
     src/cutscene_aspect.cpp
     src/field_of_view.cpp
     src/interpolation.cpp
+    src/model_detail.cpp
     src/render_fixes.cpp
     src/look_aim.cpp
     src/mouse_camera.cpp
@@ -206,7 +207,8 @@ if (CONKER_RT64)
     add_custom_command(TARGET ConkerRecomp POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory "${CMAKE_CURRENT_SOURCE_DIR}/assets" "$<TARGET_FILE_DIR:ConkerRecomp>/assets")
 
-    target_sources(ConkerRecomp PRIVATE src/frontend.cpp src/conker_config.cpp src/audio_output.cpp src/rumble.cpp src/fps_counter.cpp src/pad_mappings.cpp src/texture_packs.cpp src/gliden64_packs.cpp)
+    target_sources(ConkerRecomp PRIVATE src/frontend.cpp src/conker_config.cpp src/audio_output.cpp src/rumble.cpp src/fps_counter.cpp src/reticle.cpp src/pad_mappings.cpp src/texture_packs.cpp src/gliden64_packs.cpp src/notices.cpp src/local_achievements.cpp src/save_states.cpp)
+
     # CONKER_RT64 selects the window build; the rest are what rt64 compiles its own headers with.
     target_compile_definitions(ConkerRecomp PRIVATE CONKER_RT64 HLSL_CPU)
     if (WIN32)
@@ -265,4 +267,10 @@ elseif (WIN32)
     # Mods replace recompiled functions by patching their machine code, so identical
     # functions must not be folded into one.
     target_link_options(ConkerRecomp PRIVATE /OPT:NOICF)
+endif()
+if (APPLE)
+    # Mods patch the recompiled functions' machine code, which needs __TEXT's maximum protection
+    # to allow writing; Apple's linker caps it at r-x, so a wrapper raises it after linking
+    # (host/macos/ld64; without it macOS killed the game as soon as a mod was enabled, issue #81).
+    target_link_options(ConkerRecomp PRIVATE "-fuse-ld=${CMAKE_CURRENT_SOURCE_DIR}/macos/ld64")
 endif()

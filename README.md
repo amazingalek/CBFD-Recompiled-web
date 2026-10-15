@@ -40,15 +40,38 @@ yourself instead, read on.
 
 - Runs natively on Windows (Direct3D 12 or Vulkan), Linux (Vulkan) and macOS
   (Metal), rendered by RT64. Supports higher resolutions, widescreen,
-  anti-aliasing and high frame-rate presentation.
-- Game controllers and keyboard, with remappable controls and rumble.
+  anti-aliasing and high frame-rate presentation, with Conker, his shadow and the
+  camera interpolated between the game's frames.
+- Widescreen across gameplay, menus, cutscenes (or 4:3 cutscenes, with the
+  **Cutscene Aspect Ratio** option), split screen and the pause screen, with the
+  world drawn and culled for the wider view. **Overscan Borders** hides the N64's
+  black border down each side.
+- Game controllers and keyboard, with remappable controls (mouse buttons too) and
+  rumble settings (motor, style and strength). N64 pads and adapters for real N64
+  controllers are built in, and each controller gets its own player in
+  multiplayer.
+- Mouse and gyro aiming, a free camera on the right stick (or the mouse) that
+  stays out of walls, camera turning speed and inversion, and a Field of View
+  setting.
+- An aiming **Reticle**, a green ring like Live & Reloaded's, and **Swap Sticks**
+  and **Lock-On** options for aiming.
 - Full audio: music, sound effects and the voice acting.
 - Saving (EEPROM), stored per user.
 - A launcher with settings, controls and a mod menu (RecompFrontend, as in
   Zelda 64: Recompiled and Banjo: Recompiled).
+- The game's reflective surfaces (Conker's glass, the logo's sheen) and its point
+  lights (the bar's lantern, the N64 logo), drawn as on the N64.
+- **Conker's Detail** keeps Conker on his most detailed model, and **Show FPS**
+  puts a frame rate counter in the corner.
+- Achievements, the program's own, for reaching the game's scenes.
+- ROM hacks that only change the game's assets, such as the uncensored and the
+  Russian translation ROMs, with the launcher switching between them.
 - Mod support (`.nrm` mods: function patches and hooks). Three mods are
   included: **Skip Intro**, **Skip Any Cutscene** and **Cheats**.
-- Texture packs (RT64's `.rtz`), for HD textures and other replacements.
+- Texture packs (RT64's `.rtz`, and GLideN64's `.htc`), for HD textures and
+  other replacements.
+- Save states: save anywhere with F5 and load with F7, in nine slots
+  ([how to use them, and how they work](docs/save-states.md)).
 
 ## Status
 
@@ -56,18 +79,14 @@ The game is playable, and has been played through to the end. Known issues:
 
 - Widescreen: the pause menu's blurred background is the 4:3 frame scaled up to
   the full width, so its top and bottom are cropped.
-- Environment-mapped (reflective) surfaces render without their reflection texture.
-- Frame rates above 30: characters snap once when the game changes how many parts
-  it draws them with, a few times a minute, and the camera can blend across a cut.
 - Only the US ROM is supported (and ROM hacks that only change its assets: see
   [ROM hacks](#rom-hacks)).
-- Linux: the build and the game have been tested on Ubuntu 24.04 under WSL, with
-  software Vulkan (llvmpipe) and sound. It hasn't been played on Linux with a
-  real GPU driver yet, so reports are welcome, especially about performance or
-  audio (under WSL the sound crackles while the software renderer loads the CPU).
-- macOS: the build has been tested on an Apple M3 Pro with macOS 27 and Xcode 27,
-  and the game starts and runs with Metal. It hasn't been played through on
-  macOS yet, and Intel Macs haven't been tried.
+- Linux: the game is played on Linux with real GPU drivers, the Steam Deck
+  included, and the build is tested on Ubuntu 24.04. Reports from other
+  distributions and GPUs are welcome, especially about performance or audio.
+- macOS: the game is played on Apple Silicon with Metal (the build is tested on
+  an Apple M3 Pro with macOS 27 and Xcode 27). It hasn't been confirmed played
+  through on macOS yet, and Intel Macs haven't been tried.
 
 If the game crashes on Windows, a report is written to `crash.log` next to the
 executable and shown in a message box. On Linux and macOS, the crash report is printed
@@ -374,8 +393,11 @@ decompilation in `conker/`, which needs its own Linux tools: IDO, which runs
 through the MIPS binutils, and the Python packages in `requirements.txt`. On
 Linux, macOS, or in WSL on Windows, `./build.sh --decomp` builds the decompilation
 too, checks that it rebuilds your ROM's code byte for byte, and regenerates those
-files from it (`recomp/run.sh`). The decompilation is a work in progress: about 9%
-of the code is C so far, and the rest is still the original assembly.
+files from it (`recomp/run.sh`). The decompilation is a work in progress, and
+most of the code is still the original assembly.
+[DevOldSchool's conkers-bfd-decomp](https://github.com/DevOldSchool/conkers-bfd-decomp)
+is further along, and this project follows its progress
+([issue #57](https://github.com/sciaschi/CBFD-Recompiled/issues/57)).
 
 On macOS, `--decomp` also needs `coreutils` and `mips-linux-gnu-binutils` from
 Homebrew (the script offers to install them). The decompilation comes with two
@@ -393,12 +415,22 @@ Run `host/build/ConkerRecomp` (Linux and macOS) or `host\build-win\ConkerRecomp.
 **Start Game**.
 
 - **Settings** (in the launcher, or Esc / the controller's menu button in game)
-  has graphics (resolution, aspect ratio, anti-aliasing, frame rate), controls,
-  sound and mod options.
+  has its options by tab: General (deadzone, rumble), Camera (turning, the free
+  camera, field of view, aiming with the stick), Mouse & Gyro, Graphics
+  (resolution, aspect ratio, anti-aliasing, frame rate, texture packs), Controls,
+  Sound, Achievements and Mods. The tabs scroll sideways when they don't all fit.
+- **Achievements** are the program's own, for reaching the game's scenes (the
+  ones its Chapters menu lists), from the first death to the end credits. They're
+  kept on this computer, in `achievements.txt` with the settings, and the
+  Achievements tab lists them. Only what you do in play counts: scenes a save
+  had already reached unlock when a new game reaches them.
 - Saves, settings and the stored ROM live in `~/.config/ConkerRecompiled` on
   Linux, `~/Library/Application Support/ConkerRecompiled` on macOS and
   `%LOCALAPPDATA%\ConkerRecompiled` on Windows. Put an empty `portable.txt` next
   to the executable to keep them there instead.
+- **Save states**: F5 saves the game exactly as it is, F7 loads it back, F6
+  picks the next of the nine slots. They never touch the game's own saves. See
+  [docs/save-states.md](docs/save-states.md).
 - Default keyboard controls: move with WASD, A = Space, B = Left Shift,
   Z = Q, L = E, R = R, Start = Enter, C buttons = arrow keys, D-pad = IJKL.
   Everything can be remapped in Controls.
@@ -413,7 +445,9 @@ Run `host/build/ConkerRecomp` (Linux and macOS) or `host\build-win\ConkerRecomp.
 A ROM hack that only changes the game's assets (its audio, textures, models or
 text), such as an uncensored patch that restores the bleeped words, plays like the
 US ROM. The recompiled code only comes from the ROM's code, which has to be the US
-ROM's, so hacks that change the game's code are refused.
+ROM's, so hacks that change the game's code are refused. A hack that repacks the
+game's compressed code without changing it, as the Russian fan translation does, is
+checked unpacked and plays too (**Version: US Russian**).
 
 The launcher's **Version** option says which ROM is in play, with its region (for
 example **Version: US Original** or **Version: US Uncensored**), and so does the
@@ -458,7 +492,7 @@ Texture packs replace the game's textures with new ones, such as HD textures.
 They're RT64 texture packs, the same format as Zelda 64: Recompiled's and Banjo:
 Recompiled's: an `rt64.json` listing each texture's hash and its replacement
 image. Install a `.rtz` pack like a mod (the `mods` folder, or dropped onto the
-Mods menu), then pick it in **Settings > Texture Packs**, which turns it on and
+Mods menu), then pick it in **Settings > Graphics > Texture Pack**, which turns it on and
 the other packs off. Packs installed while the game runs are listed there from
 the next start. Its default, **Set in the Mods Menu**, leaves them to the
 **Mods** menu instead, where several can be on at once (later ones in the list
@@ -469,7 +503,7 @@ pack's `.htc` file the same way (**Install Mods** or dropped onto the Mods menu)
 or put it in the `mods` folder and start the game or press the Mods menu's
 refresh button: it's unpacked, once, into a pack folder beside it, with its
 progress shown (a large pack takes a minute or so), and turned on. It's then in
-the **Mods** menu, and listed in **Settings > Texture Packs**. GLideN64 names each texture by a
+the **Mods** menu, and listed in **Settings > Graphics > Texture Pack**. GLideN64 names each texture by a
 different hash than RT64 (Rice's), which the game's RT64 works out as each
 texture is loaded. Only packs stored as RGBA8 are unpacked (not those built with
 texture compression).
@@ -551,6 +585,8 @@ Bug reports, fixes and patches are welcome: see [CONTRIBUTING.md](CONTRIBUTING.m
   [RecompFrontend](https://github.com/N64Recomp/RecompFrontend) by Wiseguy and
   contributors.
 - [RT64](https://github.com/rt64/rt64) by Darío and contributors.
+- [ConkerBFDReloaded](https://github.com/DahSidiAbdallah/ConkerBFDReloaded) by
+  dahmedvall95, whose widescreen pause background led to this project's.
 - The mod headers follow the
   [Banjo: Recompiled mod template](https://github.com/BanjoRecomp/BKRecompModTemplate).
 - Fonts: [Inter](https://rsms.me/inter/), [Noto Emoji](https://fonts.google.com/noto/specimen/Noto+Emoji)
@@ -573,6 +609,11 @@ their own licenses, and a build combines them:
   GlideHQ (Hiroshi Morii, as in GLideN64) and Rice Video, both under the GPL
   version 2 or later ([recomp/README.md](recomp/README.md#local-changes-to-the-tools)).
   That's compatible with the GPL version 3.
+- The macOS linker wrapper, [`host/macos/ld64`](host/macos/ld64), which lets mods
+  patch the program's code there, follows Banjo: Recompiled's
+  ([github.com/BanjoRecomp/BanjoRecomp](https://github.com/BanjoRecomp/BanjoRecomp),
+  `.github/macos/ld64`) and is under the GPL, version 3, as that is. It's only
+  used to build, and isn't part of the program.
 
 The game itself is not included and not covered by them.
 

@@ -70,15 +70,77 @@ namespace {
         SDL_free(mapping);
     }
 
-    // Watches controllers connecting: each is printed, and its C-buttons remapped if they need it
-    // (pad_mappings.cpp).
+    // The controllers connected, each opened here too (SDL counts its opens, so recompinput's own
+    // stays as it is), by instance ID. Only the main thread changes this, as SDL announces a
+    // controller connecting or disconnecting (watch_controllers) and at start (create_gfx); the
+    // other threads read it (get_port_controllers), so none of them asks SDL for its devices.
+    //
+    // Issue #88: macOS crashed when a controller connected while playing. The Mac build's SDL2 is
+    // sdl2-compat, SDL2's functions over SDL3, and it keeps one list of devices for the index-based
+    // calls: SDL_NumJoysticks frees it and fetches it again, without a lock around the two. As a
+    // DualSense connected, sdl2-compat refreshed it on the main thread for the event while the VI
+    // thread's rumble listed the controllers (SDL_NumJoysticks, for the port controllers), and the
+    // list was freed twice. Listing them only on the main thread, as SDL announces each, they're
+    // never listed at once. A controller's buttons, sticks and rumble are safe from any thread.
+    std::mutex open_controllers_mutex;
+    std::vector<std::pair<SDL_JoystickID, SDL_GameController*>> open_controllers;
+
+    // From the main thread: the controller at device index, if it's one SDL has a mapping for and
+    // it isn't in the list yet.
+    void open_controller(int index) {
+        if (!SDL_IsGameController(index)) {
+            return;
+        }
+        const SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(index);
+        {
+            std::lock_guard lock{ open_controllers_mutex };
+            for (const auto& [open_id, controller] : open_controllers) {
+                if (open_id == id) {
+                    return;
+                }
+            }
+        }
+        SDL_GameController* controller = SDL_GameControllerOpen(index);
+        if (controller == nullptr) {
+            std::printf("[controller] couldn't open device %d: %s\n", index, SDL_GetError());
+            return;
+        }
+        std::lock_guard lock{ open_controllers_mutex };
+        open_controllers.emplace_back(SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)), controller);
+    }
+
+    // From the main thread: the controller with that instance ID leaves the list.
+    void close_controller(SDL_JoystickID id) {
+        SDL_GameController* closing = nullptr;
+        {
+            std::lock_guard lock{ open_controllers_mutex };
+            for (auto it = open_controllers.begin(); it != open_controllers.end(); ++it) {
+                if (it->first == id) {
+                    closing = it->second;
+                    open_controllers.erase(it);
+                    break;
+                }
+            }
+        }
+        if (closing != nullptr) {
+            SDL_GameControllerClose(closing);
+        }
+    }
+
+    // Watches controllers connecting: each is printed, opened into the list above, and its C-buttons
+    // remapped if they need it (pad_mappings.cpp). SDL calls this on the thread that announces the
+    // device, the main one, as it pumps events, so the devices are listed there.
     int SDLCALL watch_controllers(void*, SDL_Event* event) {
         switch (event->type) {
         case SDL_JOYDEVICEADDED:
-            conker::pad_mappings::on_device_added();
+            conker::pad_mappings::fix_all();
             break;
         case SDL_CONTROLLERDEVICEADDED:
             print_controller(event->cdevice.which);
+            open_controller(event->cdevice.which);
+            break;
+        case SDL_CONTROLLERDEVICEREMOVED:
+            close_controller(event->cdevice.which);
             break;
         }
         std::fflush(stdout);
@@ -132,6 +194,7 @@ namespace {
         // The controllers connected at start were announced before the watch.
         for (int index = 0; index < SDL_NumJoysticks(); index++) {
             print_controller(index);
+            open_controller(index);
         }
         conker::pad_mappings::fix_all();
         // The file dialogs (Load ROM, mods). Only after SDL: on macOS, NFD_Init creates the
@@ -142,6 +205,8 @@ namespace {
 #endif
         // The mouse camera's scroll wheel zoom (mouse_camera.cpp).
         conker_mouse_camera_init();
+        // Save states' keys, and the runtime's idle moment they're taken at (save_states.cpp).
+        conker::save_states::init();
         return nullptr;
     }
 
@@ -181,6 +246,8 @@ namespace {
         recompinput::handle_events();
         conker::texture_packs::update_unpacking();
         conker::fps_counter::update();
+        conker::notices::update();
+        conker::reticle::update();
         std::string title;
         {
             std::lock_guard lock(title_mutex);
@@ -267,8 +334,11 @@ namespace {
         conker::texture_packs::apply();
         // And unpack the GLideN64 packs not unpacked yet, showing the progress over the launcher.
         conker::texture_packs::unpack_gliden64_packs();
-        // recompui's UI exists now: the FPS counter can make its own.
+        // recompui's UI exists now: the FPS counter and the aiming reticle can make their own.
         conker::fps_counter::on_ui_ready();
+        conker::notices::on_ui_ready();
+        conker::local_achievements::init();
+        conker::reticle::on_ui_ready();
         options->add_start_game_or_load_rom_option();
         version_option = options->add_option("Version", on_version_selected);
         add_rom_option = options->add_option("Add ROM", on_add_rom_selected);
@@ -307,7 +377,6 @@ namespace {
 
 void conker::frontend::on_vi() {
     conker::rumble::update();
-    conker::pad_mappings::update();
 }
 
 // Controller ports. recompinput's single-player mode reports all four ports as plugged
@@ -342,18 +411,12 @@ namespace {
     // order. Returns how many hold ports; `connected` gets how many controllers are open.
     int get_port_controllers(std::array<SDL_GameController*, max_ports>& out, int* connected = nullptr) {
         std::lock_guard lock{ port_mutex };
-        // The controllers recompinput has opened.
+        // The controllers connected, from the main thread's list (open_controllers): this runs on
+        // the game's threads (input, rumble), where SDL's own device list isn't safe to read (#88).
         std::vector<std::pair<SDL_JoystickID, SDL_GameController*>> open;
-        int num_joysticks = SDL_NumJoysticks();
-        for (int i = 0; i < num_joysticks; i++) {
-            if (!SDL_IsGameController(i)) {
-                continue;
-            }
-            SDL_JoystickID id = SDL_JoystickGetDeviceInstanceID(i);
-            SDL_GameController* controller = SDL_GameControllerFromInstanceID(id);
-            if (controller != nullptr) {
-                open.emplace_back(id, controller);
-            }
+        {
+            std::lock_guard open_lock{ open_controllers_mutex };
+            open = open_controllers;
         }
         auto find_open = [&](SDL_JoystickID id) -> SDL_GameController* {
             for (const auto& [open_id, controller] : open) {
@@ -382,7 +445,23 @@ namespace {
         return count;
     }
 
-    float controller_field_analog(SDL_GameController* controller, const recompinput::InputField& field) {
+    // The stick axis read for an axis bound: with swap (Aiming: Swap Sticks, issue #84), the left stick's
+    // axes are read from the right stick and the right's from the left, so whatever the profile binds to
+    // either stick (by default the N64 stick to the left, the C-buttons to the right) moves to the other.
+    int stick_axis(int axis, bool swap) {
+        if (!swap) {
+            return axis;
+        }
+        switch (axis) {
+        case SDL_CONTROLLER_AXIS_LEFTX: return SDL_CONTROLLER_AXIS_RIGHTX;
+        case SDL_CONTROLLER_AXIS_LEFTY: return SDL_CONTROLLER_AXIS_RIGHTY;
+        case SDL_CONTROLLER_AXIS_RIGHTX: return SDL_CONTROLLER_AXIS_LEFTX;
+        case SDL_CONTROLLER_AXIS_RIGHTY: return SDL_CONTROLLER_AXIS_LEFTY;
+        default: return axis;
+        }
+    }
+
+    float controller_field_analog(SDL_GameController* controller, const recompinput::InputField& field, bool swap = false) {
         switch (field.input_type) {
         case recompinput::InputType::ControllerDigital:
             if (field.input_id >= 0 && field.input_id < SDL_CONTROLLER_BUTTON_MAX) {
@@ -394,7 +473,7 @@ namespace {
             if (axis < 0 || axis >= SDL_CONTROLLER_AXIS_MAX) {
                 return 0.0f;
             }
-            float value = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis)axis) * (1.0f / 32768.0f);
+            float value = SDL_GameControllerGetAxis(controller, (SDL_GameControllerAxis)stick_axis(axis, swap)) * (1.0f / 32768.0f);
             if (field.input_id < 0) {
                 value = -value;
             }
@@ -405,11 +484,11 @@ namespace {
         }
     }
 
-    bool controller_field_digital(SDL_GameController* controller, const recompinput::InputField& field) {
+    bool controller_field_digital(SDL_GameController* controller, const recompinput::InputField& field, bool swap = false) {
         if (field.input_type == recompinput::InputType::ControllerAnalog) {
-            return controller_field_analog(controller, field) >= recompinput::axis_digital_threshold;
+            return controller_field_analog(controller, field, swap) >= recompinput::axis_digital_threshold;
         }
-        return controller_field_analog(controller, field) > 0.0f;
+        return controller_field_analog(controller, field, swap) > 0.0f;
     }
 
     // The keyboard and the mouse are player 1's: their bindings count on port 1 only. Mouse buttons
@@ -429,8 +508,9 @@ namespace {
 
     // One controller (or none) and/or the keyboard and mouse, through the single-player bindings.
     // With free_stick (Right Stick: Free Camera, while the stick turns the camera), the controller's
-    // right stick presses no button: it turns the camera instead (mouse_camera.cpp).
-    void read_port(SDL_GameController* controller, bool keyboard, bool free_stick, uint16_t* buttons, float* x, float* y) {
+    // right stick presses no button: it turns the camera instead (mouse_camera.cpp). With swap_sticks
+    // (Aiming: Swap Sticks, while aiming), the controller's two sticks are read the other way round.
+    void read_port(SDL_GameController* controller, bool keyboard, bool free_stick, bool swap_sticks, bool z_turns_aim, uint16_t* buttons, float* x, float* y) {
         using recompinput::GameInput;
         static constexpr uint16_t button_values[] = {
             0x8000, 0x4000, 0x2000, 0x0020, 0x0010, 0x1000, 0x0008,
@@ -451,7 +531,7 @@ namespace {
                     v += keyboard ? recompinput::get_input_analog(0, field) : 0.0f;
                 }
                 else if (controller != nullptr) {
-                    v += controller_field_analog(controller, field);
+                    v += controller_field_analog(controller, field, swap_sticks);
                 }
             }
             return std::clamp(v, 0.0f, 1.0f);
@@ -468,11 +548,15 @@ namespace {
         };
 
         uint16_t cur_buttons = 0;
+        // With swap_sticks, the buttons pressed only by the left stick (bindings to the right stick, read
+        // from the left): see below.
+        uint16_t left_stick_buttons = 0;
         float cur_x = 0.0f;
         float cur_y = 0.0f;
         for (size_t b = 0; b < std::size(button_values); b++) {
             GameInput input = (GameInput)((size_t)GameInput::N64_BUTTON_START + b);
             bool pressed = false;
+            bool by_left_stick = false;
             for (size_t i = 0; i < recompinput::num_bindings_per_input; i++) {
                 if (cont_profile >= 0) {
                     const recompinput::InputField& field = binding(cont_profile, input, i);
@@ -480,7 +564,13 @@ namespace {
                         pressed |= keyboard && recompinput::get_input_digital(0, field);
                     }
                     else if (controller != nullptr && !(free_stick && is_right_stick(field))) {
-                        pressed |= controller_field_digital(controller, field);
+                        const bool down = controller_field_digital(controller, field, swap_sticks);
+                        if (swap_sticks && is_right_stick(field)) {
+                            by_left_stick |= down;
+                        }
+                        else {
+                            pressed |= down;
+                        }
                     }
                 }
                 if (keyboard && kb_profile >= 0) {
@@ -493,15 +583,52 @@ namespace {
             if (pressed) {
                 cur_buttons |= button_values[b];
             }
+            else if (by_left_stick) {
+                left_stick_buttons |= button_values[b];
+            }
         }
+        // Aiming: Swap Sticks: the left stick presses the C-buttons, which move Conker while aiming, but not
+        // C-Left and C-Right while Z is held aiming the shotgun (issue #84, z_turns_aim). With the shotgun, R aims
+        // while he moves and strafes with the C-buttons; Z (the laser sight) makes C-Left and C-Right turn the aim
+        // instead, so pushing the left stick sideways turned the aim against the right stick (logged: 40 degrees in
+        // 0.4 seconds, the right stick still). Its forward and back (C-Up, C-Down) still count. Elsewhere Z is
+        // left alone: in split screen it fires, and strafing while shooting was lost.
+        constexpr uint16_t z_button = 0x2000, c_left = 0x0002, c_right = 0x0001;
+        if ((cur_buttons & z_button) && z_turns_aim) {
+            left_stick_buttons &= (uint16_t)~(c_left | c_right);
+        }
+        cur_buttons |= left_stick_buttons;
         if (controller != nullptr && cont_profile >= 0) {
             cur_x = cont_analog(GameInput::X_AXIS_POS) - cont_analog(GameInput::X_AXIS_NEG);
             cur_y = cont_analog(GameInput::Y_AXIS_POS) - cont_analog(GameInput::Y_AXIS_NEG);
             recompinput::apply_joystick_deadzone(cur_x, cur_y, &cur_x, &cur_y);
         }
         if (keyboard && kb_profile >= 0) {
-            cur_x += kb_analog(GameInput::X_AXIS_POS) - kb_analog(GameInput::X_AXIS_NEG);
-            cur_y += kb_analog(GameInput::Y_AXIS_POS) - kb_analog(GameInput::Y_AXIS_NEG);
+            const float kb_x = kb_analog(GameInput::X_AXIS_POS) - kb_analog(GameInput::X_AXIS_NEG);
+            const float kb_y = kb_analog(GameInput::Y_AXIS_POS) - kb_analog(GameInput::Y_AXIS_NEG);
+            if (swap_sticks) {
+                // Aiming: Swap Sticks with the keyboard: the mouse aims, so the keys bound to the stick (W, A, S, D
+                // by default) press the C-buttons and move Conker, as the left stick does, instead of aiming
+                // (issue #84: they only turned the aim). Not C-Left or C-Right while Z is held, the same as the stick.
+                constexpr uint16_t c_up = 0x0008, c_down = 0x0004;
+                uint16_t keys = 0;
+                if (kb_x <= -recompinput::axis_digital_threshold) keys |= c_left;
+                if (kb_x >= recompinput::axis_digital_threshold) keys |= c_right;
+                if (kb_y >= recompinput::axis_digital_threshold) keys |= c_up;
+                if (kb_y <= -recompinput::axis_digital_threshold) keys |= c_down;
+                if ((cur_buttons & z_button) && z_turns_aim) {
+                    keys &= (uint16_t)~(c_left | c_right);
+                }
+                cur_buttons |= keys;
+            }
+            else {
+                cur_x += kb_x;
+                cur_y += kb_y;
+            }
+        }
+        // In the bank's slow motion leaps the mouse moves the crosshair, as the stick (issue #85): port 1's.
+        if (keyboard) {
+            conker::look_aim::leap_stick(cur_x, cur_y);
         }
         *buttons = cur_buttons;
         *x = std::clamp(cur_x, -1.0f, 1.0f);
@@ -529,7 +656,7 @@ namespace {
         if (!recompinput::game_input_disabled()) {
             // Port 1 has the keyboard, and its controller once one has pressed a button.
             read_port(port < count ? controllers[port] : nullptr, port == 0,
-                port == 0 && conker::mouse_camera::stick_turns_camera(), buttons, x, y);
+                port == 0 && conker::mouse_camera::stick_turns_camera(), conker::look_aim::swap_sticks_now(port), conker::look_aim::z_turns_aim(port), buttons, x, y);
         }
         return true;
     }
