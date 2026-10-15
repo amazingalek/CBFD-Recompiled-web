@@ -321,10 +321,10 @@ waited 5.5 s for the boot's 75 and drew 23.7 (8.6-28.1), and in Windy, after 5.7
 Chrome never waited at the start and drew 42.1, and in Windy, after 2.6 s for 27, 40.8 with the Intel chip 54% busy.
 No WebGPU errors, and sound short only in the waits. The CPU wrote to a framebuffer whose copy was pending 10 and 11
 times in Windy, each kept. Firefox's Windy run ended on the pause menu, over a garish, smeared copy of the scene,
-where Chrome's ended in play: that is the game's own pause background, not corruption (on an RTX 2070 the same steps
-paused onto a background like it in both browsers, and the game played on once unpaused); there the plan's last Enter,
-which unpauses, didn't take. Not smooth in either browser, Firefox at about half Chrome's rate with its GPU mostly
-idle.
+where Chrome's ended in play: that is the game's own pause background, not corruption (paused at the section's first
+checkpoint on an RTX 2070, both browsers drew a background like it, and the game played on once unpaused); there the
+plan's last Enter, which unpauses, didn't take. Not smooth in either browser, Firefox at about half Chrome's rate with
+its GPU mostly idle.
 
 ## What the build does
 
