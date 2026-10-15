@@ -333,6 +333,13 @@ RTX 2070, 1256x645, a fresh profile each, the host's every core busy with other 
 for the boot's 75 and drew about 60 after it, 52 as the median of the whole run with the wait in it. No WebGPU errors or
 exceptions in either.
 
+Played again from Pages, built on N64Recomp-browser 7277a2e (rt64-web 8bea892, tile copies reused from one display list
+to the next; main da62e29, gh-pages 035e89a) on 2026-10-15, RTX 2070, 1256x645, a fresh profile each, the host's every
+core busy with other work, by `tools/shader_plan.json`'s `windy` section with `play_page.mjs`, about 4 minutes: headless
+Chrome 155 waited 2.5 s for Windy's 27 and drew 59.3 presents a second (median), Firefox 158 waited 5.5 s for the boot's
+75 and 9.9 s for Windy's 82 and drew 59.2. Sound short only in Chrome's wait, no WebGPU errors in either. Firefox's one
+exception is the first load's wasm fetch, cut off by `coi_serviceworker.js`'s reload.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
