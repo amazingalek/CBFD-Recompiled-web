@@ -312,6 +312,20 @@ Played again from the page built on N64Recomp-browser 2efc795 (rt64-web 9ed449d,
 canvas, a quiet host, one page at a time, 25 s after the waits: Firefox 158 waited 5.2 s for the boot's 75 and
 then drew 59-60, Chrome 155 never waited and drew 50-60, rt64's pacing never on, no sound short, no WebGPU errors.
 
+On a laptop's Intel UHD (Tiger Lake, Windows 11 in its best power efficiency mode) on 2026-10-14, from the published
+page (main 968c830, N64Recomp-browser 2efc795), by `tools/shader_plan.json` (`--play 90` and `--section windy`) with
+N64Recomp-browser's `play_page.mjs` at 1256x645, Firefox 158 and headless Chrome 155, a fresh profile each, one page
+at a time; presents a second are medians after the waits, and the RTX beside the Intel chip drew nothing. Firefox
+waited 5.5 s for the boot's 75 and drew 23.7 (8.6-28.1), and in Windy, after 5.7 s and 6.9 s for the section's 82,
+19.8 (13.8-24.9), rt64's pacing never on, the Intel chip 25-27% busy and Firefox's GPU process at 0.18-0.23 cores.
+Chrome never waited at the start and drew 42.1, and in Windy, after 2.6 s for 27, 40.8 with the Intel chip 54% busy.
+No WebGPU errors, and sound short only in the waits. The CPU wrote to a framebuffer whose copy was pending 10 and 11
+times in Windy, each kept. Firefox's Windy run ended on the pause menu, over a garish, smeared copy of the scene,
+where Chrome's ended in play: that is the game's own pause background, not corruption (on an RTX 2070 the same steps
+paused onto a background like it in both browsers, and the game played on once unpaused); there the plan's last Enter,
+which unpauses, didn't take. Not smooth in either browser, Firefox at about half Chrome's rate with its GPU mostly
+idle.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
