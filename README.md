@@ -214,9 +214,13 @@ draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` 
 upstream's own submodules at upstream's commits, and [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)
 (`tools/N64Recomp-browser`) adds the web support: `build.sh` applies its `patches/` on top of this game's patches in
 `recomp/` (all of it behind `__EMSCRIPTEN__` or `__wasm__`, so the native game builds as before), and it makes the game a
-page. Its patch to N64Recomp goes in without `src/analysis.cpp`, whose change, finding a jump table in another
-section, `recomp/n64recomp.patch` already makes its own way. Mods are off on the page: the runtime can't recompile a
-mod's code there.
+page. `tools/web_patch.sh` applies them a project at a time, with two files left out where this game's patches change
+the same lines: N64Recomp's `src/analysis.cpp`, whose change, finding a jump table in another section,
+`recomp/n64recomp.patch` already makes its own way, and rt64's `src/hle/rt64_game_frame.h`, whose one line
+(`buildCallHashMap` taking a sorted vector) `tools/web_rt64_game_frame.patch` puts beside `recomp/rt64.patch`'s. Mods
+are off on the page: the runtime can't recompile a mod's code there. So are save states: the runtime tells where each
+game thread waits by its native call stack, which wasm can't walk at every wait, so `tools/web_save_states.patch` builds
+that file without one and the page sets no save state keys (`host/src/frontend.cpp`).
 
 Build and recompile with `build.sh` first (Linux, macOS, or WSL on Windows), with your ROM: the page needs the code
 the patched N64Recomp writes, and `build.cmd` doesn't apply N64Recomp-browser's patches. Then, with the Emscripten SDK installed and activated and [naga](https://github.com/gfx-rs/wgpu/tree/trunk/naga)
@@ -371,6 +375,18 @@ each, one page at a time, by `tools/shader_plan.json` with `play_page.mjs`: thro
 155 waited 1.4 s for 16 and drew 59.4 presents a second (median), Firefox 158 waited 5.3 s for the boot's 75 and 8.3 s
 for Windy's 82 and drew 58.0; at 3840x2000 (`--play 25`) Chrome never waited and drew 58.2, Firefox waited 6.2 s for the
 boot's 75 and drew 57.0. Under 0.1% of the sound short in each run, no WebGPU errors.
+
+With upstream's master merged in (version 0.1.6: room in the frame's display lists, which crashed leaving Spooky and ran
+the heap out in Windy, #98; sprite pieces under a pixel across, which crashed by Windy's beehive), main 6d52a3b on
+N64Recomp-browser v0.46.0, its build served locally, 2026-10-15, RTX 2070, 1256x645, a fresh profile, a host about a
+third busy, one page at a time: a route of eight minutes by checkpoint (`startCheckpoint` from `tools/shader_survey.js`,
+a plan of its own), Spooky's Zombie Grave Shoot, Count Batula and Zombie Fest (twice the walk) and Haunted Barrel Roll,
+out to the bank (Bank Entrance), Zombie Fest again and out to Windy, The Queen's lost her Home! and its (again), Conker
+carrying the hive, three walks each with the camera turning. Headless Chrome 155 drew 58.6 presents a second (median),
+Firefox 158 57.4 with its waits (6.6 and 7.1 s for the boot, 5.2 s for Zombie Fest, 3.0 and 6.0 s for the beehive's
+two), and neither crashed or reported a WebGPU error or exception. The page on Pages before the merge (main d6b8112)
+played the same route in Chrome without a crash too, so the route doesn't reach what crashed: upstream's route that
+halted was the barrel up Windy's water, the money and out to Birdy, and the beehive's crash came after the Queen Bee.
 
 ## What the build does
 
