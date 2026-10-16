@@ -1,11 +1,12 @@
 {
   "header": ["The page's plan for N64Recomp-browser's tools/play_page.mjs: the launcher, Add ROM on a new profile, Start Game",
+             "once the launcher names the ROM's version (before that the option is Load ROM, and a click opens the picker again),",
              "and the logos; then Windy, its first checkpoint started as the bar's Chapters menu does (tools/shader_survey.js),",
              "its cutscene skipped with L, and Conker walking back along the path, away from the stream, and then about 40 s",
              "about there: to and fro by as much each way, jumping, swinging and turning the camera."],
   "page": "ConkerRecomp.html",
   "load": [["until","Device Name",30000],["wait",7000]],
-  "setup": [["rom",628,456],["wait",3000]],
+  "setup": [["rom",628,456],["until","ROM version in play: [^n]",30000],["wait",1000]],
   "start": [["click",628,365],["until","Initializing recomp heap",20000],["wait",4000]],
   "play": [
     ["evalFile","shader_survey.js"],

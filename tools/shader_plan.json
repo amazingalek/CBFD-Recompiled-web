@@ -27,7 +27,8 @@
  ],
  "setup": [
   ["rom", 628, 456],
-  ["wait", 3000]
+  ["until", "ROM version in play: [^n]", 30000],
+  ["wait", 1000]
  ],
  "start": [
   ["click", 628, 365],
