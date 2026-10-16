@@ -224,19 +224,28 @@ namespace {
     }
 }
 
-bool conker::roms::accept(std::span<const uint8_t> rom) {
-    if (XXH3_64bits(rom.data(), rom.size()) == us_rom_hash) {
+namespace {
+    // accept, given the ROM's hash: the launcher's check of a new ROM needs the hash for its version too, and on a page
+    // each hash of the 64 MB is ~30 ms of the launcher's thread, which presents nothing meanwhile.
+    bool accept_hashed(std::span<const uint8_t> rom, uint64_t hash) {
+        using namespace conker::roms;
+        if (hash == us_rom_hash) {
+            return true;
+        }
+        const bool same_code = rom.size() >= code_end && XXH3_64bits(rom.data() + code_start, code_end - code_start) == us_code_hash;
+        if (!same_code && !same_code_unpacked(rom)) {
+            return false;
+        }
+        static std::atomic<bool> reported{ false };
+        if (!reported.exchange(true)) {
+            std::printf("[host] The ROM's assets differ from the US ROM's (a ROM hack): playing with them.\n");
+        }
         return true;
     }
-    const bool same_code = rom.size() >= code_end && XXH3_64bits(rom.data() + code_start, code_end - code_start) == us_code_hash;
-    if (!same_code && !same_code_unpacked(rom)) {
-        return false;
-    }
-    static std::atomic<bool> reported{ false };
-    if (!reported.exchange(true)) {
-        std::printf("[host] The ROM's assets differ from the US ROM's (a ROM hack): playing with them.\n");
-    }
-    return true;
+}
+
+bool conker::roms::accept(std::span<const uint8_t> rom) {
+    return accept_hashed(rom, XXH3_64bits(rom.data(), rom.size()));
 }
 
 namespace {
@@ -277,13 +286,14 @@ namespace {
         stored_time = time;
         stored_size = size;
         std::vector<uint8_t> rom = read_file(stored_path);
-        if (!conker::roms::accept(rom)) {
+        const uint64_t hash = XXH3_64bits(rom.data(), rom.size());
+        if (!accept_hashed(rom, hash)) {
             // The runtime refuses it too (and removes it) when the game starts.
             bool changed = !current_slug.empty();
             current_slug.clear();
             return changed;
         }
-        std::string slug = slug_of(XXH3_64bits(rom.data(), rom.size()));
+        std::string slug = slug_of(hash);
         std::filesystem::path kept = versions_dir / (slug + ".z64");
         if (!std::filesystem::exists(kept, error)) {
             std::filesystem::create_directories(versions_dir, error);
