@@ -214,10 +214,13 @@ draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` 
 upstream's own submodules at upstream's commits, and [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)
 (`tools/N64Recomp-browser`) adds the web support: `build.sh` applies its `patches/` on top of this game's patches in
 `recomp/` (all of it behind `__EMSCRIPTEN__` or `__wasm__`, so the native game builds as before), and it makes the game a
-page. `tools/web_patch.sh` applies them a project at a time, with two files left out where this game's patches change
+page. `tools/web_patch.sh` applies them a project at a time, with three files left out where this game's patches change
 the same lines: N64Recomp's `src/analysis.cpp`, whose change, finding a jump table in another section,
-`recomp/n64recomp.patch` already makes its own way, and rt64's `src/hle/rt64_game_frame.h`, whose one line
-(`buildCallHashMap` taking a sorted vector) `tools/web_rt64_game_frame.patch` puts beside `recomp/rt64.patch`'s. Mods
+`recomp/n64recomp.patch` already makes its own way, rt64's `src/hle/rt64_game_frame.h`, whose one line
+(`buildCallHashMap` taking a sorted vector) `tools/web_rt64_game_frame.patch` puts beside `recomp/rt64.patch`'s, and
+the runtime's `ultramodern/src/timer.cpp`, which `recomp/n64modernruntime.patch` rewrites: `tools/web_timer.patch`
+polls the last stretch before a timer there while the page's timed waits end late (in Firefox on Windows, on the system
+timer's 15.6 ms tick), as the web's runtime patch does upstream's. Mods
 are off on the page: the runtime can't recompile a mod's code there. So are save states: the runtime tells where each
 game thread waits by its native call stack, which wasm can't walk at every wait, so `tools/web_save_states.patch` builds
 that file without one and the page sets no save state keys (`host/src/frontend.cpp`).

@@ -1,0 +1,52 @@
+diff --git a/ultramodern/src/timer.cpp b/ultramodern/src/timer.cpp
+--- a/ultramodern/src/timer.cpp
++++ b/ultramodern/src/timer.cpp
+@@ -48,6 +48,36 @@ struct {
+ // state sets it so the clock goes on from the state's time (save_states.hpp).
+ static std::atomic<int64_t> clock_offset = 0;
+ 
++#if defined(__EMSCRIPTEN__)
++// The timer thread's wait for a timer, on a page. A timed wait there can end long after its time: in Firefox on
++// Windows every one ends on the system timer's tick, 15.6 ms unless the browser's process asks for a finer one, so a
++// timer a fraction of a millisecond away fired a tick late, and the game thread waiting for it waited that long (this
++// game's timers are 0.4 ms or less, about 60 a second). So this waits on the condition only until the time less how
++// late its timed waits have been ending, and closer than that polls without the lock, a quarter of a millisecond at a
++// time, the caller looking at the timers again after each.
++static void wait_for_timer(std::unique_lock<std::mutex>& lock, std::chrono::high_resolution_clock::duration wait_duration) {
++    // How late a timed wait here ends: the latest seen, less an eighth at each one that ends sooner and a 64th at each
++    // wait polled instead, so that one late wait on a busy host isn't polled for ever after.
++    static std::chrono::nanoseconds late{ 0 };
++    const auto start = std::chrono::high_resolution_clock::now();
++    if (wait_duration > late) {
++        const auto asked = wait_duration - late;
++        if (timer_context.changed.wait_for(lock, asked) == std::cv_status::timeout) {
++            const auto over = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::high_resolution_clock::now() - (start + asked));
++            late = std::max(over, late - late / 8);
++        }
++        return;
++    }
++
++    late -= late / 64;
++    const auto end = start + std::min<std::chrono::high_resolution_clock::duration>(wait_duration, std::chrono::microseconds(250));
++    lock.unlock();
++    while (std::chrono::high_resolution_clock::now() < end) {
++    }
++    lock.lock();
++}
++#endif
++
+ uint64_t duration_to_ticks(std::chrono::high_resolution_clock::duration duration) {
+     uint64_t delta_micros = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+     // More accurate than using a floating point timer, will only overflow after running for 12.47 years
+@@ -97,7 +127,11 @@ void timer_thread(RDRAM_ARG1) {
+         // Wait to reach the timer's timestamp, or for the timers to change (then look again).
+         auto wait_duration = ticks_to_timepoint(cur_timer->timestamp) - std::chrono::high_resolution_clock::now();
+         if (wait_duration.count() > 0) {
++#if defined(__EMSCRIPTEN__)
++            wait_for_timer(lock, wait_duration);
++#else
+             timer_context.changed.wait_for(lock, wait_duration);
++#endif
+             continue;
+         }
+ 
