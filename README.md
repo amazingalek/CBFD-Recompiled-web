@@ -393,6 +393,14 @@ Firefox 158 60 after a 6.6 s boot wait, no sound short after it; no WebGPU error
 N64Recomp-browser (main fbc0514, the shader plan's Windy section, 1256x645) Chrome drew 55 and Firefox 60 after waits
 of 5.9 s for the boot and 7.9 s for Windy, with none either.
 
+Played on N64Recomp-browser v0.50.0 (main 137df45 built with its pin moved there, served locally) on 2026-10-16, RTX
+2070, a fresh profile each, one page at a time, a quiet host, by `tools/shader_plan.json` through `windy` with
+`play_page.mjs`: at 1256x645 headless Chrome 155 waited 0.2 s and drew 55.6 presents a second (median; headless Chrome
+drew about 56 frames a second that night: four games played from Pages beside their builds, as a control, read 54.8-55.6
+too), Firefox 158 waited 11.1 s (14.4 s on v0.46.0) and drew 60.1; uncapped at 3840x2000 (`--uncapped --play 25`, the
+first such run) Chrome drew 329.1 and Firefox 225.2 after a 5.5 s wait. About 1,500 frames of sound short in Firefox's
+waits, none in Chrome, no WebGPU errors.
+
 ## What the build does
 
 `build.sh` holds the full sequence, if you'd rather run the steps yourself:
