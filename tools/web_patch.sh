@@ -10,8 +10,8 @@
 #   rt64_game_frame.cpp defines it) sits beside lines recomp/rt64.patch changes: tools/web_rt64_game_frame.patch
 #   makes it on top of those.
 # - the runtime's ultramodern/src/timer.cpp, which recomp/n64modernruntime.patch rewrites (its timers in a list under a
-#   lock): tools/web_timer.patch makes the web's change there, a timer polled for the last stretch before its time while
-#   the page's timed waits end late (Firefox on Windows ends them on the system timer's 15.6 ms tick).
+#   lock): tools/web_timer.patch makes the web's change there, a timer less than 2 ms away polled for, since the page's
+#   timed waits can end late (Firefox on Windows ends them on the system timer's 15.6 ms tick).
 # And one for a file recomp/'s patches add: tools/web_save_states.patch, the runtime's save states built for wasm,
 # which has no native call stack to sign a thread's wait with (the page takes no save states: host/src/frontend.cpp).
 set -e
