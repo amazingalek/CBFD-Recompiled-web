@@ -302,109 +302,27 @@ each multiplayer mode, in headless Chrome, and the list's header says what it co
 the page as a player would, for N64Recomp-browser's `tools/play_page.mjs`: the intro, then Windy's first checkpoint,
 started by the same script, its cutscene skipped, and Conker on foot (its header says more).
 
-Tried in headless Chrome: the launcher, Add ROM, the intro, the bar, Conker walking outside it, and sound; and,
-started by the recording's script, a few seconds of each chapter's places and of seven multiplayer modes.
+Firefox refuses a view of more than 2 GB of memory as a WebGPU argument, and Conker's heap grows past that, so the page
+starts there only since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the heap. Before
+plume-web 97f4e64, Firefox also lost the WebGPU device ("Out of Memory") in Windy, about 18 s after the shader plan's
+skip to checkpoint 33. What lost it was the bind groups RT64 makes as it rewrites its texture sets every frame,
+4,000-14,000 a second at checkpoint 33, which a browser frees only when JavaScript collects them; plume-web 97f4e64
+keeps them by what they bind, and the live ones stay at about 4,500.
 
-In Firefox 157 on the RTX 2070 (2026-10-13, a busy host) the first section took 12.4 s and Windy's 14.7 s, and then
-the bar drew 55 frames a second and Windy 57 (headless Chrome 155: 3.1 and 3.8 s, 59 and 59). Firefox refuses a view
-of more than 2 GB of memory as a WebGPU argument, and Conker's heap grows past that, so the page starts there only
-since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the heap.
+With the copy a list late, the CPU writes to a framebuffer whose copy is pending about ten times in Windy's first
+checkpoints, and each write is kept (the console reports them). The pause menu draws over a garish, smeared copy of the
+scene: that is the game's own pause background, not corruption, in both browsers, and the game plays on once unpaused.
 
-Built from upstream's own `tools/` submodules with N64Recomp-browser's patches on top (2026-10-14, RTX 2070): in
-headless Chrome 155 the intro, the bar and Conker walking in Hungover, with sound; in Firefox 157 the first section
-took 10.4 s, then the intro and the bar, with sound. Neither showed a WebGPU error.
+Upstream's 0.1.6, merged in, makes room in the frame's display lists, which crashed leaving Spooky and ran the heap out
+in Windy (#98), and drops sprite pieces under a pixel across, which crashed by Windy's beehive. A route by checkpoint
+(`startCheckpoint` from `tools/shader_survey.js`) through Spooky's Zombie Grave Shoot, Count Batula, Zombie Fest and
+Haunted Barrel Roll, the bank and Windy's The Queen's lost her Home! reaches neither crash, and the page before the
+merge plays it without one too: upstream's route that halted is the barrel up Windy's water, the money and out to
+Birdy, and the beehive's crash comes after the Queen Bee.
 
-Played from the published page (main 065bc7d, N64Recomp-browser 7b80155) on 2026-10-14 (RTX 2070, an idle host), by
-`tools/shader_plan.json` with N64Recomp-browser's `tools/play_page.mjs`: the launcher, Add ROM, the intro and Windy in
-both browsers, with sound. On a first visit a local build of the same commit in headless Chrome 155 didn't wait at the
-start, and Windy waited 2.8 s for 32 shaders and then drew 55-56 frames a second, with no WebGPU errors. Firefox 158
-waited 7.2 s for the first section and 11.2 s for Windy's 82, then drew 60, until about 18 s after the plan's skip to
-Windy's checkpoint 33: there it logged "Out of Memory" and lost the device, in three runs of three, the page built on
-v0.28.0 too. On a 3840x2000 canvas, the stand-in for integrated graphics, Chrome never waited and drew 48-55; Firefox
-waited 7.3 s and then drew 57-61.
-
-Played again from the published page (main 6216570, N64Recomp-browser b1c35d1) on 2026-10-14 (RTX 2070, an idle host),
-the same plan's `windy` section from a fresh profile: Firefox 158 waited 5.3 s for the first section and 9.6 s for
-Windy, then drew 60 frames a second through checkpoints 10, 27 and 33 for over 3 minutes, with no WebGPU errors and no
-sound short, in two runs of two. What had lost the device was the bind groups RT64 makes as it rewrites its texture
-sets every frame, 4,000-14,000 a second at checkpoint 33, which a browser frees only when JavaScript collects them;
-plume-web 97f4e64 keeps them by what they bind, and the live ones now stay at about 4,500. Headless Chrome 155 waited
-2 s for 27 shaders and drew 55, with no WebGPU errors. On the 3840x2000 stand-in Firefox 158 drew 60 through the same
-section, with no WebGPU errors and no sound short.
-
-On the page built on N64Recomp-browser ed8764a (v0.36.0, main ddcd0d8), 2026-10-14, the same canvas, an idle host,
-one page at a time, 90 s of the plan's boot: Firefox 158 waited 5.1 s and then drew 56-60, 1,432 sound frames short in
-the wait; Chrome 155 never waited and drew 49-56, 1,484 short at the start; no WebGPU errors in either.
-
-Played again from the page built on N64Recomp-browser 2efc795 (rt64-web 9ed449d, main 968c830) on 2026-10-14, on that
-canvas, a quiet host, one page at a time, 25 s after the waits: Firefox 158 waited 5.2 s for the boot's 75 and
-then drew 59-60, Chrome 155 never waited and drew 50-60, rt64's pacing never on, no sound short, no WebGPU errors.
-
-On a laptop's Intel UHD (Tiger Lake, Windows 11 in its best power efficiency mode) on 2026-10-14, from the published
-page (main 968c830, N64Recomp-browser 2efc795), by `tools/shader_plan.json` (`--play 90` and `--section windy`) with
-N64Recomp-browser's `play_page.mjs` at 1256x645, Firefox 158 and headless Chrome 155, a fresh profile each, one page
-at a time; presents a second are medians after the waits, and the RTX beside the Intel chip drew nothing. Firefox
-waited 5.5 s for the boot's 75 and drew 23.7 (8.6-28.1), and in Windy, after 5.7 s and 6.9 s for the section's 82,
-19.8 (13.8-24.9), rt64's pacing never on, the Intel chip 25-27% busy and Firefox's GPU process at 0.18-0.23 cores.
-Chrome never waited at the start and drew 42.1, and in Windy, after 2.6 s for 27, 40.8 with the Intel chip 54% busy.
-No WebGPU errors, and sound short only in the waits. The CPU wrote to a framebuffer whose copy was pending 10 and 11
-times in Windy, each kept. Firefox's Windy run ended on the pause menu, over a garish, smeared copy of the scene,
-where Chrome's ended in play: that is the game's own pause background, not corruption (paused at the section's first
-checkpoint on an RTX 2070, both browsers drew a background like it, and the game played on once unpaused); there the
-plan's last Enter, which unpauses, didn't take. Not smooth in either browser, Firefox at about half Chrome's rate with
-its GPU mostly idle.
-
-Played again from the page built on N64Recomp-browser d3b9031 (N64ModernRuntime-web f0e0884, RecompFrontend-web 75fe596,
-rt64-web f34b19c; main cbe14d9, gh-pages 0fe9426) on 2026-10-15, its files served locally with the cross-origin headers,
-RTX 2070, 1256x645, a fresh profile each, the host's every core busy with other work, the intro and the bar, 40 s, with
-`play_page.mjs`: headless Chrome 155 never waited and drew 57.8 presents a second (median); Firefox 158 waited 10.7 s
-for the boot's 75 and drew about 60 after it, 52 as the median of the whole run with the wait in it. No WebGPU errors or
-exceptions in either.
-
-Played again from Pages, built on N64Recomp-browser 7277a2e (rt64-web 8bea892, tile copies reused from one display list
-to the next; main da62e29, gh-pages 035e89a) on 2026-10-15, RTX 2070, 1256x645, a fresh profile each, the host's every
-core busy with other work, by `tools/shader_plan.json`'s `windy` section with `play_page.mjs`, about 4 minutes: headless
-Chrome 155 waited 2.5 s for Windy's 27 and drew 59.3 presents a second (median), Firefox 158 waited 5.5 s for the boot's
-75 and 9.9 s for Windy's 82 and drew 59.2. Sound short only in Chrome's wait, no WebGPU errors in either. Firefox's one
-exception is the first load's wasm fetch, cut off by `coi_serviceworker.js`'s reload.
-
-Played on N64Recomp-browser v0.46.0 (main 26cceb3 built with its pin moved there, served locally) on 2026-10-15, RTX
-2070, a fresh profile each, one page at a time, a host 14-27% busy, by `tools/shader_plan.json` with `play_page.mjs`:
-through `windy` at 1256x645, about 4 minutes, headless Chrome 155 waited 1.5 s for 19 and drew 59.6 presents a second
-(median), Firefox 158 waited 5.6 s for the boot's 75 and 8.8 s for Windy's 82 and drew 59.6; at 3840x2000 (`--play 25`)
-Chrome never waited and drew 59.6, Firefox waited 5.7 s for the boot and drew 59.6. Sound short only in Chrome's wait
-(under 0.1%), no WebGPU errors or exceptions.
-
-Played again from Pages, built on N64Recomp-browser v0.43.0 (main 859d3bd), on 2026-10-15, RTX 2070, a fresh profile
-each, one page at a time, by `tools/shader_plan.json` with `play_page.mjs`: through `windy` at 1256x645, headless Chrome
-155 waited 1.4 s for 16 and drew 59.4 presents a second (median), Firefox 158 waited 5.3 s for the boot's 75 and 8.3 s
-for Windy's 82 and drew 58.0; at 3840x2000 (`--play 25`) Chrome never waited and drew 58.2, Firefox waited 6.2 s for the
-boot's 75 and drew 57.0. Under 0.1% of the sound short in each run, no WebGPU errors.
-
-With upstream's master merged in (version 0.1.6: room in the frame's display lists, which crashed leaving Spooky and ran
-the heap out in Windy, #98; sprite pieces under a pixel across, which crashed by Windy's beehive), main 6d52a3b on
-N64Recomp-browser v0.46.0, its build served locally, 2026-10-15, RTX 2070, 1256x645, a fresh profile, a host about a
-third busy, one page at a time: a route of eight minutes by checkpoint (`startCheckpoint` from `tools/shader_survey.js`,
-a plan of its own), Spooky's Zombie Grave Shoot, Count Batula and Zombie Fest (twice the walk) and Haunted Barrel Roll,
-out to the bank (Bank Entrance), Zombie Fest again and out to Windy, The Queen's lost her Home! and its (again), Conker
-carrying the hive, three walks each with the camera turning. Headless Chrome 155 drew 58.6 presents a second (median),
-Firefox 158 57.4 with its waits (6.6 and 7.1 s for the boot, 5.2 s for Zombie Fest, 3.0 and 6.0 s for the beehive's
-two), and neither crashed or reported a WebGPU error or exception. The page on Pages before the merge (main d6b8112)
-played the same route in Chrome without a crash too, so the route doesn't reach what crashed: upstream's route that
-halted was the barrel up Windy's water, the money and out to Birdy, and the beehive's crash came after the Queen Bee.
-From Pages (main d389fb3, the same page), cold, the same GPU, a quiet host, 3840x2000, 25 s of the game playing by
-itself: headless Chrome 155 52.6 and 55.6 presents a second in two runs while the shader list built behind the game,
-Firefox 158 60 after a 6.6 s boot wait, no sound short after it; no WebGPU errors or exceptions. On a newer
-N64Recomp-browser (main fbc0514, the shader plan's Windy section, 1256x645) Chrome drew 55 and Firefox 60 after waits
-of 5.9 s for the boot and 7.9 s for Windy, with none either.
-
-Played on N64Recomp-browser v0.50.0 (main 137df45 built with its pin moved there, served locally) on 2026-10-16, RTX
-2070, a fresh profile each, one page at a time, a quiet host, by `tools/shader_plan.json` through `windy` with
-`play_page.mjs`: at 1256x645 headless Chrome 155 waited 0.2 s and drew 55.6 presents a second (median; headless Chrome
-drew about 56 frames a second that night: four games played from Pages beside their builds, as a control, read 54.8-55.6
-too), Firefox 158 waited 11.1 s (14.4 s on v0.46.0) and drew 60.1; uncapped at 3840x2000 (`--uncapped --play 25`, the
-first such run) Chrome drew 329.1 and Firefox 225.2 after a 5.5 s wait. About 1,500 frames of sound short in Firefox's
-waits, none in Chrome, no WebGPU errors.
+How the page plays, in each browser and on which GPU, is recorded in N64Recomp-browser's
+[plays.jsonl](https://github.com/amazingalek/N64Recomp-browser/blob/main/plays.jsonl) and its
+[games table](https://github.com/amazingalek/N64Recomp-browser#games).
 
 ## What the build does
 
