@@ -286,8 +286,8 @@ Sound plays through N64Recomp-browser's AudioWorklet output on the browser's aud
 The page builds the shaders the game uses from a list, `host/rt64_shaders.txt` (specialized and run through spirv-opt
 when the page is built; N64Recomp-browser and its rt64), so no scene draws with the slow ubershader. The list is in sections: the first, the intro and the bar's menus (85
 shaders, 75 pipelines), then one a chapter (It's War has two) and one a multiplayer mode. In Chrome the whole list is
-built behind the game from its first frame, the first section first on half the host's cores, then the rest one at a
-time with a section the game has reached moved to the front, and the game waits only when a frame wants 4 or more of a
+built in the background, the first section and the first chapter's first on half the host's cores, then the rest one
+at a time with a section the game has reached moved to the front, and the game waits only when a frame wants 4 or more of a
 section's shaders that aren't built yet, under a small "Preparing graphics" indicator in a corner. Firefox builds a
 pipeline in line with the rest of its GPU work, so there the first section is built before the game passes its first
 frame and each of the others when the game first draws with it, the game waiting. Before N64Recomp-browser v0.27.0
