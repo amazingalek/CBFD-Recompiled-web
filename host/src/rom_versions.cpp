@@ -24,6 +24,12 @@
 #include <string>
 #include <vector>
 
+#ifdef __EMSCRIPTEN__
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#endif
+
 #define XXH_INLINE_ALL
 #include "xxHash/xxhash.h"
 
@@ -172,8 +178,49 @@ namespace {
     }
 
     std::vector<uint8_t> read_file(const std::filesystem::path& path) {
+#ifdef __EMSCRIPTEN__
+        // A page's files are in the page's thread's file system, and every read from another thread waits for that
+        // thread: an istreambuf_iterator reads the 64 MB ROM there 1 KB at a time, ~65,000 round trips (0.77 s in
+        // Chrome), and the launcher, whose thread this runs on, presents nothing meanwhile. So it is read in 4 MB
+        // pieces, a millisecond or two each.
+        std::vector<uint8_t> ret;
+        int fd = open(path.c_str(), O_RDONLY);
+        struct stat st;
+        if (fd >= 0 && fstat(fd, &st) == 0) {
+            ret.resize(st.st_size);
+            size_t done = 0;
+            while (done < ret.size()) {
+                ssize_t got = read(fd, ret.data() + done, std::min<size_t>(ret.size() - done, 4 << 20));
+                if (got <= 0) {
+                    break;
+                }
+                done += got;
+            }
+            ret.resize(done);
+        }
+        if (fd >= 0) {
+            close(fd);
+        }
+        return ret;
+#else
         std::ifstream file(path, std::ios::binary);
         return std::vector<uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+#endif
+    }
+
+    // Copies a kept version over the ROM in play.
+    void copy_rom(const std::filesystem::path& from, const std::filesystem::path& to, std::error_code& error) {
+#ifdef __EMSCRIPTEN__
+        // libc++ copies a file through fstreams in pieces of a few KB, each a round trip to the page's thread (above):
+        // read it in 4 MB pieces and write it in one.
+        std::vector<uint8_t> rom = read_file(from);
+        std::ofstream out(to, std::ios::binary | std::ios::trunc);
+        out.write(reinterpret_cast<const char*>(rom.data()), (std::streamsize)rom.size());
+        out.close();
+        error = (rom.empty() || !out) ? std::make_error_code(std::errc::io_error) : std::error_code();
+#else
+        std::filesystem::copy_file(from, to, std::filesystem::copy_options::overwrite_existing, error);
+#endif
     }
 }
 
@@ -302,8 +349,7 @@ bool conker::roms::switch_to_next() {
     auto it = std::find(slugs.begin(), slugs.end(), current_slug);
     const std::string& next = (it == slugs.end() || it + 1 == slugs.end()) ? slugs.front() : *(it + 1);
     std::error_code error;
-    std::filesystem::copy_file(versions_dir / (next + ".z64"), stored_path,
-        std::filesystem::copy_options::overwrite_existing, error);
+    copy_rom(versions_dir / (next + ".z64"), stored_path, error);
     if (error) {
         std::fprintf(stderr, "[host] Couldn't switch to the %s ROM: %s\n", name_of(next).c_str(), error.message().c_str());
         return false;
