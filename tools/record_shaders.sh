@@ -3,7 +3,7 @@
 # starts, by code rather than by playing: N64Recomp-browser's tools/record_shaders.mjs serves the page built in
 # <build dir> (host/build-web), drives it in headless Chrome through tools/shader_plan.json, a page load a section, in
 # which tools/shader_survey.js starts each chapter's places and each multiplayer level, and writes the list. Needs
-# node 22 or later and Chrome, and takes about 50 minutes. The list's descriptions that the recording doesn't print
+# node 22 or later and Chrome, and takes about 55 minutes. The list's descriptions that the recording doesn't print
 # again are kept in its last section ("earlier"): add them back after a new recording. Then build the page again, so
 # that it prebuilds the new list.
 #

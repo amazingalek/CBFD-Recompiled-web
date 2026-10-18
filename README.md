@@ -297,7 +297,7 @@ on the next (2.3-3.9 s once a visit to the chapters had filled Chrome's pipeline
 and a chapter's 4.6 s (Windy, 82 pipelines) to 6.1 s (Uga Buga, 116) on a first visit. A shader the list misses is
 built behind the game, and the page remembers it (`localStorage`) and builds it with its section on the next visit.
 The list is recorded by code, not by playing: `bash tools/record_shaders.sh <build dir> <ROM>` (its header says how;
-about 50 minutes) has `tools/shader_survey.js` start every chapter's places from the game's own checkpoint table, and
+about 55 minutes) has `tools/shader_survey.js` start every chapter's places from the game's own checkpoint table, and
 each multiplayer mode, in headless Chrome, and the list's header says what it covers. `tools/play_plan.json` plays
 the page as a player would, for N64Recomp-browser's `tools/play_page.mjs`: the intro, then Windy's first checkpoint,
 started by the same script, its cutscene skipped, and Conker on foot (its header says more).

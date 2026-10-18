@@ -11,12 +11,15 @@
 # list, OPTIONS, CHAPTERS). Then a section a chapter, each of its places reached from the checkpoint table (Hungover
 # with the new game's opening; Windy; Barn Boys; Bats Tower with the boiler; Sloprano; Uga Buga; Spooky; It's War, in
 # two, "war" and its second half "war-tank"; The Heist), a few seconds of each, skipping the cutscene, walking,
-# turning the camera, jumping and the pause menu; and a section for each of seven multiplayer modes, one player
-# against three bots. Not recorded: the multiplayer Race (it goes back to the bar when started this way), split
-# screen, the Options screens, and whatever a place draws further in than its start; RT64 builds those when the game
-# first asks for them. The last section, "earlier", is what an earlier recording by hand had that this one never
-# printed. Flags follow settings (filtering, HDR, MSAA, upscaling), so a change to one of those defaults means
-# recording again.
+# turning the camera, jumping and the pause menu. Places that draw shaders their chapter's others don't are played
+# again in a load of their own, on foot after the cutscene for 20 s, or 40 s in a boss fight: out and back by as much,
+# jumping, attacking, crouching and turning the camera (Barn Boys' checkpoint 50; Poovarotti Flush; Spooky's
+# checkpoint 171; A Tank Too Far and War Boss Countdown; Fight The Alien). Then a section for each of seven
+# multiplayer modes, one player against three bots. Not recorded: the multiplayer Race (it goes back to the bar when
+# started this way), split screen, the Options screens, and whatever the other places draw further in than their
+# start; RT64 builds those when the game first asks for them. The last section, "earlier", is what an earlier
+# recording by hand had that this one never printed. Flags follow settings (filtering, HDR, MSAA, upscaling), so a
+# change to one of those defaults means recording again.
 00552078 00082c3f fc121824 ff33ffff 088a000e
 00504340 00082c3f fcffffff fffefb7d 0800000b
 00504240 00002c3f fcffb3ff ff65feff 0ccb540b
@@ -355,6 +358,7 @@ section barnboys
 005049d8 00082caf fcff99ff ff31feff 088a000a
 00504354 00002caf fc129625 332dfeff 04cb540b
 0c1849d8 0018acaf fc1219ff ff17fe3f 099b100e
+04d049d8 0019ac3f fc26a080 151492ff 1ccf540a
 section batstower
 0f0a4004 0008ac0f fcffffff fffcf279 0ccb540a
 00552230 00082c3f fc457e8a 55fdf8fc 0800000e
@@ -559,6 +563,8 @@ section sloprano
 04d049d8 00182c3f fcff9880 f514feff 0803540e
 04d049d8 00182c3f fcff9880 f514feff 088a000e
 00404dd8 00082caf fc121a24 ff37ffff 0ccb540a
+04d04dd8 0018ac3f fcff9880 f514feff 0b33320e
+00504350 00082caf fc121a24 ff37ffff 088a000a
 section ugabuga
 0c192230 001dac3f fc26a004 151092ff 1806008e
 00552230 0008ac3f fc121824 5531feff 0912880e
@@ -796,6 +802,8 @@ section spooky
 04d12278 0019ac3f fc26a080 151492ff 188e000e
 00000000 00202cff fc26a004 151092ff 0003540b
 04d049d8 0018ac3f fcff9880 f514feff 0803540e
+04d13078 0018ac3f fcff9880 f514feff 088a000a
+04d049d8 0018ac3f fcff9880 f514feff 088a000a
 section war
 0f0a4004 0008ac0f fc129a25 ff37ffff 0ccb540a
 0c192078 00182c3f fcffffff ff96793f 0800000e
@@ -1011,6 +1019,7 @@ section war-tank
 00504354 00002caf fc129a25 ff37ffff 0ccb540b
 005049dc 00002caf fcff97ff ff2cfe7f 0ccb540b
 005049d8 00082caf fc129825 ff33ffff 088a000a
+00504240 00002caf fc129a25 ff37ffff 0ccb540b
 section heist
 00552230 00082c3f fc457e8a 55fdf8fc 0800000e
 0c192230 0019ac3f fc26a004 151092ff 188e000e
@@ -1146,6 +1155,10 @@ section heist
 0c1849d8 0019ac3f fc26a004 1f9493ff 188e000e
 0c192078 0018ac3f fc1219ff ff17fe3f 088a000e
 0c192078 0019ac3f fc26a004 1f9493ff 188e000e
+04d13078 00182c3f fcfffe80 f514f8ff 0ccb540a
+0c192078 00182caf fc127fff ff17f83f 0ccb540e
+0c192078 00182caf fc127fff ff17f83f 0803540e
+00504244 00002c3f fcffd3ff ffa6ff7f 04cb540b
 section multi-heist
 0f0a3238 0019ac3f fc26a004 15fc92f8 1aaeaa0e
 0f0a3238 0008ac3f fc127e24 55fdf2f9 088a000e
