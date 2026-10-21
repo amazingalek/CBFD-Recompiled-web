@@ -220,7 +220,9 @@ the same lines: N64Recomp's `src/analysis.cpp`, whose change, finding a jump tab
 (`buildCallHashMap` taking a sorted vector) `tools/web_rt64_game_frame.patch` puts beside `recomp/rt64.patch`'s, and
 the runtime's `ultramodern/src/timer.cpp`, which `recomp/n64modernruntime.patch` rewrites: `tools/web_timer.patch`
 polls for a timer less than 2 ms away there, since the page's timed waits can end late (in Firefox on Windows, on the
-system timer's 15.6 ms tick), as the web's runtime patch does upstream's. Mods
+system timer's 15.6 ms tick), as the web's runtime patch does upstream's. Those three are the web's change as the
+N64Recomp-browser commit the script names had it, and what the web has changed in them since is merged in
+(`apply.cmake --since`), so a later web change reaches the page; one that meets this game's lines stops the build. Mods
 are off on the page: the runtime can't recompile a mod's code there. So are save states: the runtime tells where each
 game thread waits by its native call stack, which wasm can't walk at every wait, so `tools/web_save_states.patch` builds
 that file without one and the page sets no save state keys (`host/src/frontend.cpp`).
