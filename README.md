@@ -301,8 +301,10 @@ built behind the game, and the page remembers it (`localStorage`) and builds it 
 The list is recorded by code, not by playing: `bash tools/record_shaders.sh <build dir> <ROM>` (its header says how;
 about 55 minutes) has `tools/shader_survey.js` start every chapter's places from the game's own checkpoint table, and
 each multiplayer mode, in headless Chrome, and the list's header says what it covers. `tools/play_plan.json` plays
-the page as a player would, for N64Recomp-browser's `tools/play_page.mjs`: the intro, then Windy's first checkpoint,
-started by the same script, its cutscene skipped, and Conker on foot (its header says more).
+the page as a player would, for N64Recomp-browser's `tools/play_page.mjs`, in 2-3 minutes: the intro, then Windy's
+first checkpoint, started by the same script, its cutscene skipped, and Conker on foot. `tools/play_plan_extended.json`,
+for when a longer play is needed, goes on to Bats Tower's, Sloprano's and Uga Buga's first checkpoints in the same load,
+each about 15 s, in at most 5 minutes (their headers say more).
 
 Firefox refuses a view of more than 2 GB of memory as a WebGPU argument, and Conker's heap grows past that, so the page
 starts there only since rt64-web c3d781a, which copies `setBindGroup`'s dynamic offsets out of the heap. Before

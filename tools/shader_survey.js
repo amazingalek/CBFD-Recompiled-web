@@ -12,8 +12,10 @@
 //
 // Both starts resolve once the scene (0x800BE9F0) has changed, or with false after 30 s, which is what a checkpoint in
 // the scene already gives (Windy's later ones are scene 6 again). allowSkip() lets L skip the cutscene playing, scene() gives
-// the scene and phase, and waitScene(id, ms) waits for one. RDRAM is found as the recorder's n64r finds it; bytes and
-// halfwords sit at the address XOR 3 and XOR 2 in its little-endian words.
+// the scene and phase, and waitScene(id, ms) waits for one. startAt(i, scene, ms) starts checkpoint i and resolves
+// with scene() once the scene it gives is that one, and throws, naming the scene playing, if it isn't (or if the scene
+// hasn't changed in ms, 30 s if not given): a play plan's need before each place it plays. RDRAM is found as the
+// recorder's n64r finds it; bytes and halfwords sit at the address XOR 3 and XOR 2 in its little-endian words.
 (() => {
   if (!window.__rdram) {
     const h = HEAPU32;
@@ -37,21 +39,27 @@
     for (let t = 0; t < ms; t += 100) { if (r32(0x800BE9F0) === id) return true; await sleep(100); }
     return false;
   };
-  const fadeThenCall = async (func) => {
+  const fadeThenCall = async (func, ms = 30000) => {
     const before = r32(0x800BE9F0);
     w32(0x800E0A88, func);
     w8(0x8008FD74, 3);
     w8(0x800E0B94, 7);
-    for (let t = 0; t < 30000; t += 100) { if (r32(0x800BE9F0) !== before) return true; await sleep(100); }
+    for (let t = 0; t < ms; t += 100) { if (r32(0x800BE9F0) !== before) return true; await sleep(100); }
     return false;
   };
   // L skips the cutscene playing (func_1501E05C) once these say it may: D_800D2E40 as Continue sets it, and
   // D_800C3C9C, which a cutscene that may never be skipped sets as it starts (the new game's opening is one).
   window.allowSkip = () => { w8(0x800D2E40, 1); w8(0x800C3C9C, 0); return true; };
-  window.startCheckpoint = (i) => {
+  window.startCheckpoint = (i, ms) => {
     w8(0x8008FDB4, 1);
     w16(0x8008FDAC, i);
-    return fadeThenCall(0x151E30C4);
+    return fadeThenCall(0x151E30C4, ms);
+  };
+  window.startAt = async (i, want, ms) => {
+    const changed = await window.startCheckpoint(i, ms);
+    const now = window.scene();
+    if (!changed || (want !== undefined && now.scene !== want)) throw new Error(`checkpoint ${i}: scene ${JSON.stringify(now)}, not ${want}`);
+    return now;
   };
   window.startMulti = (mode, bots = 3) => {
     const state = r32(0x8008FDD4);
