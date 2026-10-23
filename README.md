@@ -3,8 +3,8 @@
 # Conker's Bad Fur Day: Recompiled
 
 > [!WARNING]
-> **This is amazingalek/CBFD-Recompiled-web, a fork, not Conker's Bad Fur Day: Recompiled.** Its `main` branch builds
-> the game into a web page (WebGPU, through [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)),
+> **This is n64hub/CBFD-Recompiled-web, a fork, not Conker's Bad Fur Day: Recompiled.** Its `main` branch builds
+> the game into a web page (WebGPU, through [N64Recomp-browser](https://github.com/n64hub/N64Recomp-browser)),
 > and everything on that branch past upstream's commits was written by AI (Claude) for this fork. It is not made,
 > endorsed or supported by the Conker's Bad Fur Day: Recompiled authors: please don't take issues with this fork to
 > them. Building the page: [The web page](#the-web-page).
@@ -12,7 +12,7 @@
 > This port is here to build out and test N64Recomp-browser's web support on another game than the one it was written
 > for: what it turns up is fixed there where it can be, so every recomp's page gets the fix.
 
-**Play it in the browser: https://amazingalek.github.io/CBFD-Recompiled-web/**, with your own ROM, picked in the
+**Play it in the browser: https://n64hub.com/conker/**, with your own ROM, picked in the
 launcher and kept in the browser. It needs WebGPU (Chrome or Edge 113 and up). The page is built from this branch
 and published with N64Recomp-browser's `tools/publish_page.sh`, so it can be a commit or two behind.
 
@@ -211,7 +211,7 @@ changed.
 
 This fork's `main` branch also builds with [Emscripten](https://emscripten.org) into a page, `ConkerRecomp.html`, that
 draws through WebGPU. `tools/N64Recomp`, `tools/N64ModernRuntime`, `tools/rt64` and `tools/RecompFrontend` are
-upstream's own submodules at upstream's commits, and [N64Recomp-browser](https://github.com/amazingalek/N64Recomp-browser)
+upstream's own submodules at upstream's commits, and [N64Recomp-browser](https://github.com/n64hub/N64Recomp-browser)
 (`tools/N64Recomp-browser`) adds the web support: `build.sh` applies its `patches/` on top of this game's patches in
 `recomp/` (all of it behind `__EMSCRIPTEN__` or `__wasm__`, so the native game builds as before), and it makes the game a
 page. `tools/web_patch.sh` applies them a project at a time, with three files left out where this game's patches change
@@ -325,8 +325,8 @@ merge plays it without one too: upstream's route that halted is the barrel up Wi
 Birdy, and the beehive's crash comes after the Queen Bee.
 
 How the page plays, in each browser and on which GPU, is recorded in N64Recomp-browser's
-[plays.jsonl](https://github.com/amazingalek/N64Recomp-browser/blob/main/plays.jsonl) and its
-[games table](https://github.com/amazingalek/N64Recomp-browser#games).
+[plays.jsonl](https://github.com/n64hub/N64Recomp-browser/blob/main/plays.jsonl) and its
+[games table](https://github.com/n64hub/N64Recomp-browser#games).
 
 ## What the build does
 

@@ -27,4 +27,4 @@
 	url = https://github.com/matt-kempster/mips_to_c.git
 [submodule "tools/N64Recomp-browser"]
 	path = tools/N64Recomp-browser
-	url = https://github.com/amazingalek/N64Recomp-browser
+	url = https://github.com/n64hub/N64Recomp-browser
